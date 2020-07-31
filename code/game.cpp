@@ -470,18 +470,20 @@ GameEngine(game_memory *Memory, game_input *Input,
         PieceGroup.PieceCount = 0;
 
         real32 dt = Input->dtForFrame;
+        move_spec MoveSpec = DefaultMoveSpec();
+        v2 ddP = {};
+
         switch (Entity->Type)
         {
             case EntityType_Hero:
             {
                 hero_bitmaps *HeroBitmaps = &GameState->HeroBitmaps[Entity->FacingDirection];
             
-                move_spec MoveSpec = DefaultMoveSpec();
                 MoveSpec.UnitMaxAccelVector = true;
                 MoveSpec.Speed = 50.0f;
                 MoveSpec.Drag = 10.0f;
+                ddP = ConHero->ddP;
                 
-                MoveEntity(SimRegion, Entity, dt, &MoveSpec, ConHero->ddP);
                 if((ConHero->dSword.X != 0.0f) || (ConHero->dSword.Y != 0.0f))
                 {
                     sim_entity *Sword = Entity->Sword.Ptr;
@@ -512,8 +514,11 @@ GameEngine(game_memory *Memory, game_input *Input,
             {
                 INVALID_CODE_PATH;
             } break;
-        }
 
+        }
+        
+        MoveEntity(SimRegion, Entity, dt, &MoveSpec, ddP);
+        
         r32 PixelsPerMeter = GameState->PixelsPerMeter;
         
         real32 EntityGroundPointX = ScreenCenterX + PixelsPerMeter * Entity->P.X;
