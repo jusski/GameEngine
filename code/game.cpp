@@ -278,6 +278,7 @@ AddWall(game_state *GameState, tile_map_position P)
 }
 
 internal entity *
+
 AddHero(game_state *GameState)
 {
     tile_map_position P = GameState->CameraPosition;
@@ -285,7 +286,7 @@ AddHero(game_state *GameState)
 
     Entity->Sim.Width = 0.5f * GameState->TileMap.TileSizeInMeters;
     Entity->Sim.Height = Entity->Sim.Width;
-    AddFlag(&Entity->Sim, EntityFlag_Collides);
+    AddFlag(&Entity->Sim, EntityFlag_Collides | EntityFlag_Moves);
 
     GameState->CameraFollowingEntityIndex = Entity->Sim.StorageIndex;
 
@@ -516,8 +517,11 @@ GameEngine(game_memory *Memory, game_input *Input,
             } break;
 
         }
-        
-        MoveEntity(SimRegion, Entity, dt, &MoveSpec, ddP);
+
+        if (IsSet(Entity, EntityFlag_Moves))
+        {
+            MoveEntity(SimRegion, Entity, dt, &MoveSpec, ddP);
+        }
         
         r32 PixelsPerMeter = GameState->PixelsPerMeter;
         

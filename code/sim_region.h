@@ -26,9 +26,10 @@ union entity_reference
 enum entity_flag
 {
     EntityFlag_NonSpatial = (1 << 1),
-    EntityFlag_Collides = (1 << 2),
+    EntityFlag_Collides   = (1 << 2),
+    EntityFlag_Moves      = (1 << 3),
 
-    EntityFlag_SimSpace = (1 << 30),
+    EntityFlag_SimSpace   = (1 << 30),
 };
 
 struct sim_entity

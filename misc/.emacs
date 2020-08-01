@@ -608,7 +608,7 @@
 (global-set-key [C-tab] 'c-indent-line-or-region)
 (define-key c++-mode-map "\C-d" 'kill-region)
 (define-key c++-mode-map "\e/" 'c-mark-function)
-(define-key c++-mode-map "\ej" 'imenu)
+(define-key c++-mode-map "\ej" 'ido-imenu-anywhere)
 ;(define-key c++-mode-map "\C-d" 'kill-region)
 (global-set-key (kbd "C-.") 'exchange-point-and-mark)
 (global-set-key (kbd "C-b") 'ido-switch-buffer)
@@ -681,12 +681,3 @@ the documentation of `query-replace'"
   (setq auto-window-vscroll nil)
 )
 (add-hook 'window-setup-hook 'post-load-stuff t)
-
-
-
-
-
-
-
-
-

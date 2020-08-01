@@ -301,8 +301,8 @@ inline rectangle2
 AddRadiusTo(rectangle2 A, r32 Width, r32 Height)
 {
     rectangle2 Result;
-    Result.Min = A.Min - v2{Width, Width};
-    Result.Max = A.Max + v2{Height, Height};
+    Result.Min = A.Min - v2{Width, Height};
+    Result.Max = A.Max + v2{Width, Height};
 
     return(Result);
 }
