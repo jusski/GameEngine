@@ -203,7 +203,7 @@
                                     (access-label          . -4)
                                     (substatement-open     .  0)
                                     (statement-case-intro  .  4)
-                                    (statement-block-intro .  c-lineup-for)
+                                    (statement-block-intro .  4)
                                     (case-label            .  4)
                                     (block-open            .  0)
                                     (inline-open           .  0)

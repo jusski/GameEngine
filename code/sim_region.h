@@ -5,6 +5,7 @@ struct move_spec
     bool32 UnitMaxAccelVector;
     real32 Speed;
     real32 Drag;
+    real32 DistanceRemaining;
 };
 
 enum entity_type

@@ -228,10 +228,21 @@ MoveEntity(sim_region * SimRegion, sim_entity *Entity, r32 dt,
     v2 StartPosition = Entity->P;
  
     v2 WallNormal = {};
+    r32 Epsilon = 0.0001f;
     for (s32 Iteration = 0; Iteration < 4; Iteration++)
     {
         r32 T = 1.0f;
         bool32 Hit = false;
+        r32 DeltaLength = Length(PositionDelta);
+        if (DeltaLength < Epsilon)
+        {
+            break;
+        }
+            
+        if (DeltaLength > MoveSpec->DistanceRemaining)
+        {
+            T = MoveSpec->DistanceRemaining / DeltaLength;
+        }
         for (u32 Index = 0; Index < SimRegion->EntityCount; ++Index)
         {
             sim_entity *TestEntity = SimRegion->Entities + Index;
@@ -275,8 +286,9 @@ MoveEntity(sim_region * SimRegion, sim_entity *Entity, r32 dt,
                 WallNormal = v2{0.0f,-1.0f};
             }
 
-            T = T < 1.0f ? Maximum(0.0f, T-0.01f) : T;
+            T = T < 1.0f ? Maximum(0.0f, T-Epsilon) : T;
             Entity->P = StartPosition + PositionDelta * T;
+            MoveSpec->DistanceRemaining -= DeltaLength * T;
             if (Hit)
             {
                 StartPosition += PositionDelta * T;
@@ -304,5 +316,6 @@ MoveEntity(sim_region * SimRegion, sim_entity *Entity, r32 dt,
     {
         Entity->FacingDirection = 0;
     }
+    
     
 }

@@ -77,23 +77,6 @@ struct bitmap_format
 };
 #pragma pack(pop)
 
-union v3
-{
-    struct
-    {
-        r32 x;
-        r32 y;
-        r32 z;
-        
-    };
-    struct
-    {
-        r32 R;
-        r32 G;
-        r32 B;
-    };
-};
-
 struct v2
 {
     union
@@ -107,10 +90,36 @@ struct v2
     r32& operator[](int i) {return E[i];}
 };
 
-struct v4
+inline v2
+V2(s32 X, s32 Y)
 {
-  union
-  {
+    v2 Result = {(r32)X, (r32)Y};
+
+    return(Result);
+}
+
+
+inline v2
+V2(u32 X, u32 Y)
+{
+    v2 Result = {(r32)X, (r32)Y};
+
+    return(Result);
+}
+
+
+inline v2
+V2(r32 X, r32 Y)
+{
+    v2 Result = {(r32)X, (r32)Y};
+
+    return(Result);
+}
+
+
+
+union v4
+{
     struct
     {
         r32 R,G,B,A;
@@ -120,7 +129,20 @@ struct v4
         r32 X,Y,Z,W;
     };
     r32 E[4];
-  };
+};
+
+
+union v3
+{
+    struct
+    {
+        r32 R,G,B;
+    };
+    struct
+    {
+        r32 X,Y,Z;
+    };
+    r32 E[3];
 };
 
 struct rectangle2
@@ -213,80 +235,6 @@ operator*(v2 A, v2 B)
     return(Result);
 }
 
-inline bool32
-IsInRectangle(rectangle2 &Rectangle, v2 &P)
-{
-    bool32 Result = false;
-
-    if((Rectangle.Min.X <= P.X) &&
-       (Rectangle.Min.Y <= P.Y) &&
-       (Rectangle.Max.X > P.X) &&
-       (Rectangle.Max.Y > P.Y))
-    {
-        Result = true;
-    }
-    
-    return(Result);
-}
-
-
-
-inline rectangle2
-RectMinMax(v2 Min, v2 Max)
-{
-    rectangle2 Result;
-
-    Result.Min = Min;
-    Result.Max = Max;
-    
-    return(Result);
-}
-
-inline rectangle2
-RectCentHalfDim(v2 Center, v2 HalfDim)
-{
-    rectangle2 Result;
-
-    Result.Min = Center - HalfDim;
-    Result.Max = Center + HalfDim;
-    
-    return(Result);
-}
-
-inline rectangle2
-RectCentDim(v2 Center, v2 Dim)
-{
-    rectangle2 Result = RectCentHalfDim(Center, Dim);
-    
-    return(Result);
-}
-
-inline v2
-GetCenter(rectangle2 Rect)
-{
-    v2 Result;
-
-    Result = Rect.Min + 0.5f*(Rect.Max - Rect.Min);
-    
-    return(Result);
-}
-
-inline v2
-GetMinCorner(rectangle2 Rect)
-{
-    v2 Result = Rect.Min;
-
-    return(Result);
-}
-
-inline v2
-GetMaxCorner(rectangle2 Rect)
-{
-    v2 Result = Rect.Max;
-
-    return(Result);
-}
-
 inline void
 ZeroMemory(u32 Size, void *Ptr)
 {
@@ -295,14 +243,4 @@ ZeroMemory(u32 Size, void *Ptr)
     {
         *Byte++ = 0;
     }
-}
-
-inline rectangle2
-AddRadiusTo(rectangle2 A, r32 Width, r32 Height)
-{
-    rectangle2 Result;
-    Result.Min = A.Min - v2{Width, Height};
-    Result.Max = A.Max + v2{Width, Height};
-
-    return(Result);
 }

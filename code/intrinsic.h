@@ -65,5 +65,13 @@ LengthSquared(v2 Value)
     return(Result);
 }
 
+inline r32
+Length(v2 Value)
+{
+    r32 Result = SquareRoot(LengthSquared(Value));
+
+    return(Result);
+}
+
 #define INTRINSIC_H
 #endif

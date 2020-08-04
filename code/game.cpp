@@ -10,6 +10,7 @@ DefaultMoveSpec()
     Result.UnitMaxAccelVector = false;
     Result.Speed = 1.0f;
     Result.Drag = 0.0f;
+    Result.DistanceRemaining = 1000.0f;
 
     return Result;
 }
@@ -341,6 +342,44 @@ ClearScreen(game_offscreen_bitmap *Buffer)
                   1.0f, 0.0f, 1.0f);
 }
 
+internal void
+DrawTestGround(game_state *GameState, game_offscreen_bitmap *Buffer)
+{
+    random_series Series = RandomSeed(1234);
+    r32 PixelsPerMeter = GameState->PixelsPerMeter;
+    loaded_bitmap *Stamp = 0;
+
+    for(u32 Index = 0; Index < 10; ++Index)
+    {
+        Stamp = &GameState->Tuft[RandomChoice(&Series, 3)];
+        v2 Offset = 0.5f * V2(Stamp->Width, Stamp->Height);
+        v2 ScreenCenter = 0.5 * V2(Buffer->Width, Buffer->Height);
+
+        v2 RandomOffset = 5.0f * PixelsPerMeter * V2(RandomBilateral(&Series),
+                                                     RandomBilateral(&Series));
+        v2 TopLeft = (ScreenCenter - Offset) + RandomOffset;
+        
+        DrawBitmap(Buffer, Stamp, TopLeft.X, TopLeft.Y);    
+    }
+
+    
+    for(u32 Index = 0; Index < 5; ++Index)
+    {
+        Stamp = &GameState->Rock[RandomChoice(&Series, 4)];
+        v2 Offset = 0.5f * V2(Stamp->Width, Stamp->Height);
+        v2 ScreenCenter = 0.5 * V2(Buffer->Width, Buffer->Height);
+        
+        v2 RandomOffset = 5.0f * PixelsPerMeter * V2(RandomBilateral(&Series),
+                                                     RandomBilateral(&Series));
+        v2 TopLeft = (ScreenCenter - Offset) + RandomOffset;
+                
+        DrawBitmap(Buffer, Stamp, TopLeft.X, TopLeft.Y);    
+    }
+
+    
+    
+}
+
 extern "C" void
 GameEngine(game_memory *Memory, game_input *Input,
            game_sound_output_buffer *Sound,
@@ -357,7 +396,29 @@ GameEngine(game_memory *Memory, game_input *Input,
         GameState->HeroFacingRight.Body = HeroFacingRight;
         loaded_bitmap HeroFacingLeft = LoadBitmap(Memory->ReadFileToMemory, "car_left.bmp");
         GameState->HeroFacingLeft.Body = HeroFacingLeft;
+
         
+        GameState->Grass[0] = LoadBitmap(Memory->ReadFileToMemory, "test2/grass00.bmp");
+        GameState->Grass[1] = LoadBitmap(Memory->ReadFileToMemory, "test2/grass01.bmp");
+        
+        GameState->Ground[0] = LoadBitmap(Memory->ReadFileToMemory, "test2/ground00.bmp");
+        GameState->Ground[1] = LoadBitmap(Memory->ReadFileToMemory, "test2/ground01.bmp");
+        GameState->Ground[2] = LoadBitmap(Memory->ReadFileToMemory, "test2/ground02.bmp");
+        GameState->Ground[3] = LoadBitmap(Memory->ReadFileToMemory, "test2/ground03.bmp");
+        
+        GameState->Tree[0] = LoadBitmap(Memory->ReadFileToMemory, "test2/tree00.bmp");
+        GameState->Tree[1] = LoadBitmap(Memory->ReadFileToMemory, "test2/tree01.bmp");
+        GameState->Tree[2] = LoadBitmap(Memory->ReadFileToMemory, "test2/tree02.bmp");
+        
+        GameState->Tuft[0] = LoadBitmap(Memory->ReadFileToMemory, "test2/tuft00.bmp");
+        GameState->Tuft[1] = LoadBitmap(Memory->ReadFileToMemory, "test2/tuft01.bmp");
+        GameState->Tuft[2] = LoadBitmap(Memory->ReadFileToMemory, "test2/tuft02.bmp");
+        
+        GameState->Rock[0] = LoadBitmap(Memory->ReadFileToMemory, "test2/rock00.bmp");
+        GameState->Rock[1] = LoadBitmap(Memory->ReadFileToMemory, "test2/rock01.bmp");
+        GameState->Rock[2] = LoadBitmap(Memory->ReadFileToMemory, "test2/rock02.bmp");
+        GameState->Rock[3] = LoadBitmap(Memory->ReadFileToMemory, "test2/rock03.bmp");
+
         GameState->SecondsPerFrame = 16.0f / 1000.0f;
         
         GameState->Arena.Memory = (u8 *)Memory->PersistentStorage + sizeof(*GameState);
@@ -442,6 +503,7 @@ GameEngine(game_memory *Memory, game_input *Input,
 
 
     ClearScreen(Video);
+    DrawTestGround(GameState, Video);
     
     tile_map *TileMap = &GameState->TileMap;
     u32 TileSpanX = 17 * 3;

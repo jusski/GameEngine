@@ -1,6 +1,9 @@
 #ifndef HELLO_H_
 
+
 #include "platform.h"
+#include "math.h"
+#include "random.h"
 #include "tile_map.h"
 #include "intrinsic.h"
 #include "sim_region.h"
@@ -132,6 +135,12 @@ struct game_state
 
     tile_map_position CameraPosition;
     u32 CameraFollowingEntityIndex;
+
+    loaded_bitmap Grass[2];
+    loaded_bitmap Ground[4];
+    loaded_bitmap Rock[4];
+    loaded_bitmap Tree[3];
+    loaded_bitmap Tuft[3];
     
     memory_arena Arena;
     bool32 Initialized;
