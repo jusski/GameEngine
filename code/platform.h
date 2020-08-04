@@ -8,6 +8,7 @@
 #define KilloBytes(Size) (Size*1024LL)
 #define MegaBytes(Size) (KilloBytes(Size)*1024LL)
 #define GigaBytes(Size) (MegaBytes(Size)*1024LL)
+#define BITMAP_BYTES_PER_PIXEL 4
 
 #define Assert(Statement) if(!(Statement)) {*(int *)0 = 0;}
 #define INVALID_CODE_PATH Assert(!"InvalidCodePath")

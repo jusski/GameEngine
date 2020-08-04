@@ -34,6 +34,8 @@ struct loaded_bitmap
     u32 Height;
     u8* Bytes;
 
+    u32 Pitch;
+
     v2 Offset;
 };  
 
@@ -141,6 +143,8 @@ struct game_state
     loaded_bitmap Rock[4];
     loaded_bitmap Tree[3];
     loaded_bitmap Tuft[3];
+
+    loaded_bitmap GroundBitmap;
     
     memory_arena Arena;
     bool32 Initialized;

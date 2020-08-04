@@ -137,6 +137,7 @@
 	   ("\\<\\(Minimum\\)" 1 'font-lock-macros-face t)
 	   ("\\<\\(MegaBytes\\)" 1 'font-lock-macros-face t)
 	   ("\\<\\(KilloBytes\\)" 1 'font-lock-macros-face t)
+	   ("\\<\\(BITMAP_BYTES_PER_PIXEL\\)" 1 'font-lock-macros-face t)
 	   ("\\<\\(Trace\\)" 1 'font-lock-macros-face t)
 	   ("\\<\\(Assert\\)" 1 'font-lock-macros-face t)
 	   ("\\<\\(INVALID_CODE_PATH\\)" 1 'font-lock-macros-face t)
@@ -612,6 +613,7 @@
 ;(define-key c++-mode-map "\C-d" 'kill-region)
 (global-set-key (kbd "C-.") 'exchange-point-and-mark)
 (global-set-key (kbd "C-b") 'ido-switch-buffer)
+(global-set-key (kbd "C-j") 'imenu)
 
 (setq executable "win32_main.exe")
 

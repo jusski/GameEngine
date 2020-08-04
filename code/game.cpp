@@ -160,10 +160,11 @@ LoadBitmap(read_file_to_memory ReadFileToMemory, char *FileName)
     if (LoadedFile.Size != 0)
     {
         BitmapFormat = (bitmap_format *) LoadedFile.Bytes;
-        Assert(BitmapFormat->BitsPerPixel == 32);
+        Assert(BitmapFormat->BitsPerPixel == (BITMAP_BYTES_PER_PIXEL * 8));
         
         Result.Width = BitmapFormat->Width;
         Result.Height = BitmapFormat->Height;
+        Result.Pitch = Result.Width * BITMAP_BYTES_PER_PIXEL;
 
         Result.Offset.X = 20;
         Result.Offset.Y = 33;
@@ -191,6 +192,80 @@ LoadBitmap(read_file_to_memory ReadFileToMemory, char *FileName)
         }
     }
     return(Result);
+}
+
+internal loaded_bitmap
+MakeEmptyBitmap(memory_arena *Arena, u32 Width, u32 Height)
+{
+    loaded_bitmap Result = {};
+    
+    Result.Width = Width;
+    Result.Height = Height;
+    Result.Pitch = Width * BITMAP_BYTES_PER_PIXEL;
+    u32 TotalBitmapSize = Width * Height * BITMAP_BYTES_PER_PIXEL;
+    Result.Bytes = PushArray(Arena, TotalBitmapSize, u8);
+
+    ZeroMemory(TotalBitmapSize, Result.Bytes);
+
+    return(Result);
+}
+
+internal void
+DrawBitmap(loaded_bitmap *Destination, loaded_bitmap *Source,
+           r32 TopLeftX, r32 TopLeftY, r32 Alpha = 1.0f)
+{
+
+    s32 ClipX = (TopLeftX < 0) ? (s32)-TopLeftX : 0;
+    s32 ClipY = (TopLeftY < 0) ? (s32)-TopLeftY : 0;
+
+    r32 BottomRightX = TopLeftX + (r32)Source->Width;
+    r32 BottomRightY = TopLeftY + (r32)Source->Height;
+    BottomRightX = (BottomRightX > Destination->Width) ? Destination->Width : BottomRightX;
+    BottomRightY = (BottomRightY > Destination->Height) ? Destination->Height : BottomRightY;
+
+    TopLeftX = (TopLeftX < 0) ? 0 : TopLeftX;
+    TopLeftY = (TopLeftY < 0) ? 0 : TopLeftY;
+    
+    s32 MinX = RoundR32ToS32(TopLeftX);
+    s32 MinY = RoundR32ToS32(TopLeftY);
+    s32 MaxX = RoundR32ToS32(BottomRightX);
+    s32 MaxY = RoundR32ToS32(BottomRightY);
+    
+    u32 *DestinationRow = (u32 *)Destination->Bytes + Destination->Width*MinY + MinX;
+    u32 *SourceRow = (u32 *)Source->Bytes;
+    SourceRow += ClipY*Source->Width + ClipX; //TODO clip offset can be too big
+    
+    for (s32 y = MinY; y < MaxY; y++)
+    {
+        u32 *DestinationPixel = DestinationRow;
+        u32 *SourcePixel = SourceRow;
+        for (s32 x = MinX; x < MaxX; x++)
+        {
+            
+            r32 SR = (r32)((*SourcePixel >> 16) & 0xFF);
+            r32 SG = (r32)((*SourcePixel >>  8) & 0xFF);
+            r32 SB = (r32)((*SourcePixel >>  0) & 0xFF);
+
+            r32 DR = (r32)((*DestinationPixel >> 16) & 0xFF);
+            r32 DG = (r32)((*DestinationPixel >>  8) & 0xFF);
+            r32 DB = (r32)((*DestinationPixel >>  0) & 0xFF);
+
+            u8 SA = (*SourcePixel >> 24) & 0xFF;
+            u8 DA = (*DestinationPixel >> 24) & 0xFF;
+            r32 t = SA / 255.0f;
+            t *= Alpha;
+            u32 R = (u32)(DR*(1.0f - t) + SR*t); 
+            u32 G = (u32)(DG*(1.0f - t) + SG*t);
+            u32 B = (u32)(DB*(1.0f - t) + SB*t);
+
+            u8 A = Maximum(SA,DA);
+            *DestinationPixel++ = (A << 24) | (R << 16) | (G << 8) | (B << 0);
+            SourcePixel++;
+        }
+        DestinationRow += Destination->Width;
+        SourceRow += Source->Width;
+    }
+    
 }
 
 internal void
@@ -224,7 +299,7 @@ DrawBitmap(game_offscreen_bitmap *Destination, loaded_bitmap *Source,
         u32 *SourcePixel = SourceRow;
         for (s32 x = MinX; x < MaxX; x++)
         {
-            
+#if 0
             r32 SR = (r32)((*SourcePixel >> 16) & 0xFF);
             r32 SG = (r32)((*SourcePixel >>  8) & 0xFF);
             r32 SB = (r32)((*SourcePixel >>  0) & 0xFF);
@@ -233,13 +308,32 @@ DrawBitmap(game_offscreen_bitmap *Destination, loaded_bitmap *Source,
             r32 DG = (r32)((*DestinationPixel >>  8) & 0xFF);
             r32 DB = (r32)((*DestinationPixel >>  0) & 0xFF);
 
-            r32 t = ((*SourcePixel >> 24) & 0xFF) / 255.0f;
+            u8 SA = (*SourcePixel >> 24) & 0xFF;
+            r32 t = SA / 255.0f;
             t *= Alpha;
             u32 R = (u32)(DR*(1.0f - t) + SR*t); 
             u32 G = (u32)(DG*(1.0f - t) + SG*t);
             u32 B = (u32)(DB*(1.0f - t) + SB*t);
+#else
+            u32 SA = ((*SourcePixel >> 24) & 0xFF);
+            u32 SR = ((*SourcePixel >> 16) & 0xFF);
+            u32 SG = ((*SourcePixel >> 8) & 0xFF);
+            u32 SB = ((*SourcePixel >> 0) & 0xFF);
+
+            u32 DA = ((*DestinationPixel >> 24) & 0xFF);
+            u32 DR = ((*DestinationPixel >> 16) & 0xFF);
+            u32 DG = ((*DestinationPixel >> 8) & 0xFF);
+            u32 DB = ((*DestinationPixel >> 0) & 0xFF);
+
+            u32 R = DR + ((SR-DR)*SA)/256;
+            u32 G = DG + ((SG-DG)*SA)/256;
+            u32 B = DB + ((SB-DB)*SA)/256;
+
+            u32 A = Maximum(SA, DA);
             
-            *DestinationPixel++ = (R << 16) | (G << 8) | (B << 0);
+            
+#endif
+            *DestinationPixel++ = (SA << 24) | (R << 16) | (G << 8) | (B << 0);
             SourcePixel++;
         }
         DestinationRow += Destination->Width;
@@ -343,37 +437,57 @@ ClearScreen(game_offscreen_bitmap *Buffer)
 }
 
 internal void
-DrawTestGround(game_state *GameState, game_offscreen_bitmap *Buffer)
+DrawTestGround(game_state *GameState, loaded_bitmap *DrawBuffer)
 {
     random_series Series = RandomSeed(1234);
     r32 PixelsPerMeter = GameState->PixelsPerMeter;
     loaded_bitmap *Stamp = 0;
 
-    for(u32 Index = 0; Index < 10; ++Index)
-    {
-        Stamp = &GameState->Tuft[RandomChoice(&Series, 3)];
-        v2 Offset = 0.5f * V2(Stamp->Width, Stamp->Height);
-        v2 ScreenCenter = 0.5 * V2(Buffer->Width, Buffer->Height);
+    r32 Radius = 5.0f;
+    v2 Center = 0.5 * V2(DrawBuffer->Width, DrawBuffer->Height);
 
-        v2 RandomOffset = 5.0f * PixelsPerMeter * V2(RandomBilateral(&Series),
-                                                     RandomBilateral(&Series));
-        v2 TopLeft = (ScreenCenter - Offset) + RandomOffset;
+    for(u32 Index = 0; Index < 15; ++Index)
+    {
+        Stamp = &GameState->Ground[RandomChoice(&Series, 4)];
+        v2 BitmapCenter = 0.5f * V2(Stamp->Width, Stamp->Height);
+
+        v2 Offset = V2(RandomBilateral(&Series), RandomBilateral(&Series));
+        v2 P = (Center - BitmapCenter) + Radius * PixelsPerMeter * Offset;
         
-        DrawBitmap(Buffer, Stamp, TopLeft.X, TopLeft.Y);    
+        DrawBitmap(DrawBuffer, Stamp, P.X, P.Y);    
     }
 
+    for(u32 Index = 0; Index < 15; ++Index)
+    {
+        Stamp = &GameState->Grass[RandomChoice(&Series, 2)];
+        v2 BitmapCenter = 0.5f * V2(Stamp->Width, Stamp->Height);
+
+        v2 Offset = V2(RandomBilateral(&Series), RandomBilateral(&Series));
+        v2 P = (Center - BitmapCenter) + Radius * PixelsPerMeter * Offset;
+        
+        DrawBitmap(DrawBuffer, Stamp, P.X, P.Y);    
+    }
+
+    for(u32 Index = 0; Index < 15; ++Index)
+    {
+        Stamp = &GameState->Tuft[RandomChoice(&Series, 3)];
+        v2 BitmapCenter = 0.5f * V2(Stamp->Width, Stamp->Height);
+
+        v2 Offset = V2(RandomBilateral(&Series), RandomBilateral(&Series));
+        v2 P = (Center - BitmapCenter) + Radius * PixelsPerMeter * Offset;
+        
+        DrawBitmap(DrawBuffer, Stamp, P.X, P.Y);    
+    }
     
     for(u32 Index = 0; Index < 5; ++Index)
     {
         Stamp = &GameState->Rock[RandomChoice(&Series, 4)];
-        v2 Offset = 0.5f * V2(Stamp->Width, Stamp->Height);
-        v2 ScreenCenter = 0.5 * V2(Buffer->Width, Buffer->Height);
+        v2 BitmapCenter = 0.5f * V2(Stamp->Width, Stamp->Height);
+
+        v2 Offset = V2(RandomBilateral(&Series), RandomBilateral(&Series));
+        v2 P = (Center - BitmapCenter) + Radius * PixelsPerMeter * Offset;
         
-        v2 RandomOffset = 5.0f * PixelsPerMeter * V2(RandomBilateral(&Series),
-                                                     RandomBilateral(&Series));
-        v2 TopLeft = (ScreenCenter - Offset) + RandomOffset;
-                
-        DrawBitmap(Buffer, Stamp, TopLeft.X, TopLeft.Y);    
+        DrawBitmap(DrawBuffer, Stamp, P.X, P.Y);    
     }
 
     
@@ -420,11 +534,11 @@ GameEngine(game_memory *Memory, game_input *Input,
         GameState->Rock[3] = LoadBitmap(Memory->ReadFileToMemory, "test2/rock03.bmp");
 
         GameState->SecondsPerFrame = 16.0f / 1000.0f;
-        
-        GameState->Arena.Memory = (u8 *)Memory->PersistentStorage + sizeof(*GameState);
-        GameState->Arena.Index = sizeof(*GameState);
-        GameState->Arena.AvailableSize = Memory->PersistentStorageSize;
 
+        InitializeArena(&GameState->Arena,
+                        Memory->PersistentStorageSize - sizeof(*GameState),
+                        (u8 *)Memory->PersistentStorage + sizeof(*GameState));
+        
         GameState->TileMap = {};
         tile_map *TileMap = &GameState->TileMap;
         TileMap->TileSizeInMeters = 1.0f;
@@ -476,6 +590,9 @@ GameEngine(game_memory *Memory, game_input *Input,
         entity *Entity = AddHero(GameState);
         GameState->Player.EntityIndex = Entity->Sim.StorageIndex;
 
+        GameState->GroundBitmap = MakeEmptyBitmap(&GameState->Arena, 256, 256);
+        DrawTestGround(GameState, &GameState->GroundBitmap);
+
         GameState->Initialized = true;
     }
     
@@ -503,8 +620,9 @@ GameEngine(game_memory *Memory, game_input *Input,
 
 
     ClearScreen(Video);
-    DrawTestGround(GameState, Video);
     
+    DrawBitmap(Video, &GameState->GroundBitmap, 125, 125, 1.0f);
+
     tile_map *TileMap = &GameState->TileMap;
     u32 TileSpanX = 17 * 3;
     u32 TileSpanY = 9 * 3;
