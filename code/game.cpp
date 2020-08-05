@@ -65,7 +65,7 @@ DrawLine(game_offscreen_bitmap *Bitmap, s32 x, s32 y, s32 Length, u32 Color)
 }
 
 internal void
-DrawRectangle(game_offscreen_bitmap *Bitmap, v2 TopLeft, v2 BottomRight,
+RenderRectangle(game_offscreen_bitmap *Bitmap, v2 TopLeft, v2 BottomRight,
               r32 R, r32 G, r32 B)
 {
     Assert(R >= 0 && R <= 1.0f);
@@ -102,41 +102,14 @@ DrawRectangle(game_offscreen_bitmap *Bitmap, v2 TopLeft, v2 BottomRight,
 }
 
 internal void
-DrawRectangle(game_offscreen_bitmap *Bitmap,
+RenderRectangle(game_offscreen_bitmap *Bitmap,
               r32 TopLeftX, r32 TopLeftY,
               r32 BottomRightX, r32 BottomRightY,
               r32 R, r32 G, r32 B)
 {
     v2 TopLeft = {TopLeftX, TopLeftY};
     v2 BottomRight = {BottomRightX, BottomRightY};
-    DrawRectangle(Bitmap, TopLeft, BottomRight, R, G, B);
-}
-
-internal void
-WeirdGradient(game_offscreen_bitmap *Bitmap,
-              u32 BlueOffset, u32 GreenOffset)
-{
-    int Pitch = Bitmap->Pitch;
-    int Stride = Bitmap->Stride;
-   
-    int64 BitmapWidth = Bitmap->Width;
-    int64 BitmapHeight = Bitmap->Height;
-    u8 *Row = (u8*) Bitmap->Memory;
-    for (u32 i = 0; i < BitmapHeight; i++)
-    {
-        u8 *Pixel = (u8*) Row;
-        for (u32 j = 0; j < BitmapWidth; j++)
-        {
-            Pixel[0] = (u8) 0;
-            Pixel[1] = (u8) 150;
-            Pixel[2] = (u8) 150;
-            Pixel[3] = 0;
-
-            Pixel += Stride;
-        }
-
-        Row += Pitch;
-    }
+    RenderRectangle(Bitmap, TopLeft, BottomRight, R, G, B);
 }
 
 inline u32
@@ -180,10 +153,16 @@ LoadBitmap(read_file_to_memory ReadFileToMemory, char *FileName)
         u32 AlphaShift = ColorShift(BitmapFormat->AlphaMask);
         while(Length--)
         {
+            u32 A = (*Pixel >> AlphaShift) & 0xFF;
             u32 R = (*Pixel >> RedShift) & 0xFF;
             u32 G = (*Pixel >> GreenShift) & 0xFF;
             u32 B = (*Pixel >> BlueShift) & 0xFF;
-            u32 A = (*Pixel >> AlphaShift) & 0xFF;
+
+            r32 AN = A / 255.0f;
+            R = (u32)((r32)R * AN);
+            G = (u32)((r32)G * AN);
+            B = (u32)((r32)B * AN);
+
             *Pixel++ =
                 (A << 24) |
                 (R << 16) |
@@ -211,7 +190,7 @@ MakeEmptyBitmap(memory_arena *Arena, u32 Width, u32 Height)
 }
 
 internal void
-DrawBitmap(loaded_bitmap *Destination, loaded_bitmap *Source,
+CompositeBitmap(loaded_bitmap *Destination, loaded_bitmap *Source,
            r32 TopLeftX, r32 TopLeftY, r32 Alpha = 1.0f)
 {
 
@@ -233,7 +212,8 @@ DrawBitmap(loaded_bitmap *Destination, loaded_bitmap *Source,
     
     u32 *DestinationRow = (u32 *)Destination->Bytes + Destination->Width*MinY + MinX;
     u32 *SourceRow = (u32 *)Source->Bytes;
-    SourceRow += ClipY*Source->Width + ClipX; //TODO clip offset can be too big
+    
+    SourceRow += ClipY*Source->Width + ClipX; 
     
     for (s32 y = MinY; y < MaxY; y++)
     {
@@ -242,23 +222,24 @@ DrawBitmap(loaded_bitmap *Destination, loaded_bitmap *Source,
         for (s32 x = MinX; x < MaxX; x++)
         {
             
+            r32 SAN = ((*SourcePixel >> 24) & 0xFF) / 255.0f;
             r32 SR = (r32)((*SourcePixel >> 16) & 0xFF);
             r32 SG = (r32)((*SourcePixel >>  8) & 0xFF);
             r32 SB = (r32)((*SourcePixel >>  0) & 0xFF);
 
+            r32 DAN = ((*DestinationPixel >> 24) & 0xFF) / 255.0f;
             r32 DR = (r32)((*DestinationPixel >> 16) & 0xFF);
             r32 DG = (r32)((*DestinationPixel >>  8) & 0xFF);
             r32 DB = (r32)((*DestinationPixel >>  0) & 0xFF);
 
-            u8 SA = (*SourcePixel >> 24) & 0xFF;
-            u8 DA = (*DestinationPixel >> 24) & 0xFF;
-            r32 t = SA / 255.0f;
-            t *= Alpha;
-            u32 R = (u32)(DR*(1.0f - t) + SR*t); 
-            u32 G = (u32)(DG*(1.0f - t) + SG*t);
-            u32 B = (u32)(DB*(1.0f - t) + SB*t);
+            //TODO on empty bitmap render is bad
+            r32 AN = SAN + DAN - (SAN * DAN); 
+            u32 R = (u32)(DR*(1.0f - SAN) + SR); 
+            u32 G = (u32)(DG*(1.0f - SAN) + SG);
+            u32 B = (u32)(DB*(1.0f - SAN) + SB);
 
-            u8 A = Maximum(SA,DA);
+            u32 A = (u32)(AN * 255.0f);
+            
             *DestinationPixel++ = (A << 24) | (R << 16) | (G << 8) | (B << 0);
             SourcePixel++;
         }
@@ -269,7 +250,7 @@ DrawBitmap(loaded_bitmap *Destination, loaded_bitmap *Source,
 }
 
 internal void
-DrawBitmap(game_offscreen_bitmap *Destination, loaded_bitmap *Source,
+RenderBitmap(game_offscreen_bitmap *Destination, loaded_bitmap *Source,
            r32 TopLeftX, r32 TopLeftY, r32 Alpha = 1.0f)
 {
 
@@ -291,7 +272,7 @@ DrawBitmap(game_offscreen_bitmap *Destination, loaded_bitmap *Source,
     
     u32 *DestinationRow = (u32 *)Destination->Memory + Destination->Width*MinY + MinX;
     u32 *SourceRow = (u32 *)Source->Bytes + Source->Width * (Source->Height - 1);
-    SourceRow += ClipY*Source->Width + ClipX; //TODO clip offset can be too big
+    SourceRow += ClipY*Source->Width + ClipX;
     
     for (s32 y = MinY; y < MaxY; y++)
     {
@@ -299,41 +280,22 @@ DrawBitmap(game_offscreen_bitmap *Destination, loaded_bitmap *Source,
         u32 *SourcePixel = SourceRow;
         for (s32 x = MinX; x < MaxX; x++)
         {
-#if 0
-            r32 SR = (r32)((*SourcePixel >> 16) & 0xFF);
-            r32 SG = (r32)((*SourcePixel >>  8) & 0xFF);
-            r32 SB = (r32)((*SourcePixel >>  0) & 0xFF);
 
-            r32 DR = (r32)((*DestinationPixel >> 16) & 0xFF);
-            r32 DG = (r32)((*DestinationPixel >>  8) & 0xFF);
-            r32 DB = (r32)((*DestinationPixel >>  0) & 0xFF);
-
-            u8 SA = (*SourcePixel >> 24) & 0xFF;
-            r32 t = SA / 255.0f;
-            t *= Alpha;
-            u32 R = (u32)(DR*(1.0f - t) + SR*t); 
-            u32 G = (u32)(DG*(1.0f - t) + SG*t);
-            u32 B = (u32)(DB*(1.0f - t) + SB*t);
-#else
             u32 SA = ((*SourcePixel >> 24) & 0xFF);
             u32 SR = ((*SourcePixel >> 16) & 0xFF);
-            u32 SG = ((*SourcePixel >> 8) & 0xFF);
-            u32 SB = ((*SourcePixel >> 0) & 0xFF);
+            u32 SG = ((*SourcePixel >> 8)  & 0xFF);
+            u32 SB = ((*SourcePixel >> 0)  & 0xFF);
 
             u32 DA = ((*DestinationPixel >> 24) & 0xFF);
             u32 DR = ((*DestinationPixel >> 16) & 0xFF);
-            u32 DG = ((*DestinationPixel >> 8) & 0xFF);
-            u32 DB = ((*DestinationPixel >> 0) & 0xFF);
+            u32 DG = ((*DestinationPixel >> 8)  & 0xFF);
+            u32 DB = ((*DestinationPixel >> 0)  & 0xFF);
 
-            u32 R = DR + ((SR-DR)*SA)/256;
-            u32 G = DG + ((SG-DG)*SA)/256;
-            u32 B = DB + ((SB-DB)*SA)/256;
+            u32 R = DR + SR-(DR*SA)/256;
+            u32 G = DG + SG-(DG*SA)/256;
+            u32 B = DB + SB-(DB*SA)/256;
 
-            u32 A = Maximum(SA, DA);
-            
-            
-#endif
-            *DestinationPixel++ = (SA << 24) | (R << 16) | (G << 8) | (B << 0);
+            *DestinationPixel++ = (R << 16) | (G << 8) | (B << 0);
             SourcePixel++;
         }
         DestinationRow += Destination->Width;
@@ -389,13 +351,6 @@ AddHero(game_state *GameState)
 }
 
 internal void
-DrawBitmap(game_offscreen_bitmap *Destination, loaded_bitmap *Source, v2 CenterPoint)
-{
-    v2 TopLeft = CenterPoint - Source->Offset;
-    DrawBitmap(Destination, Source, TopLeft.X, TopLeft.Y);
-}
-
-internal void
 PushPieace(entity_visible_piece_group *Group, loaded_bitmap *Bitmap,
            v2 Offset, v2 Dim, v2 Align, v4 Color)
 {
@@ -403,7 +358,7 @@ PushPieace(entity_visible_piece_group *Group, loaded_bitmap *Bitmap,
     entity_visible_piece *Piece = Group->Pieces + Group->PieceCount++;
     Piece->Bitmap = Bitmap;
     r32 PixelsPerMeter = Group->GameState->PixelsPerMeter;
-    Piece->Offset = Offset;
+    Piece->Offset = Offset; // TODO Is this in screen coords?
     Piece->R = Color.R;
     Piece->G = Color.G;
     Piece->B = Color.B;
@@ -432,14 +387,14 @@ PushRect(entity_visible_piece_group *Group, v2 Dim, v4 Color)
 internal void
 ClearScreen(game_offscreen_bitmap *Buffer)
 {
-    DrawRectangle(Buffer, 0, 0, (r32)Buffer->Width, (r32)Buffer->Height,
+    RenderRectangle(Buffer, 0, 0, (r32)Buffer->Width, (r32)Buffer->Height,
                   1.0f, 0.0f, 1.0f);
 }
 
 internal void
 DrawTestGround(game_state *GameState, loaded_bitmap *DrawBuffer)
 {
-    random_series Series = RandomSeed(1234);
+    random_series Series = RandomSeed(12345);
     r32 PixelsPerMeter = GameState->PixelsPerMeter;
     loaded_bitmap *Stamp = 0;
 
@@ -454,7 +409,7 @@ DrawTestGround(game_state *GameState, loaded_bitmap *DrawBuffer)
         v2 Offset = V2(RandomBilateral(&Series), RandomBilateral(&Series));
         v2 P = (Center - BitmapCenter) + Radius * PixelsPerMeter * Offset;
         
-        DrawBitmap(DrawBuffer, Stamp, P.X, P.Y);    
+        CompositeBitmap(DrawBuffer, Stamp, P.X, P.Y);    
     }
 
     for(u32 Index = 0; Index < 15; ++Index)
@@ -465,7 +420,7 @@ DrawTestGround(game_state *GameState, loaded_bitmap *DrawBuffer)
         v2 Offset = V2(RandomBilateral(&Series), RandomBilateral(&Series));
         v2 P = (Center - BitmapCenter) + Radius * PixelsPerMeter * Offset;
         
-        DrawBitmap(DrawBuffer, Stamp, P.X, P.Y);    
+        CompositeBitmap(DrawBuffer, Stamp, P.X, P.Y);    
     }
 
     for(u32 Index = 0; Index < 15; ++Index)
@@ -476,7 +431,7 @@ DrawTestGround(game_state *GameState, loaded_bitmap *DrawBuffer)
         v2 Offset = V2(RandomBilateral(&Series), RandomBilateral(&Series));
         v2 P = (Center - BitmapCenter) + Radius * PixelsPerMeter * Offset;
         
-        DrawBitmap(DrawBuffer, Stamp, P.X, P.Y);    
+        CompositeBitmap(DrawBuffer, Stamp, P.X, P.Y);    
     }
     
     for(u32 Index = 0; Index < 5; ++Index)
@@ -487,7 +442,7 @@ DrawTestGround(game_state *GameState, loaded_bitmap *DrawBuffer)
         v2 Offset = V2(RandomBilateral(&Series), RandomBilateral(&Series));
         v2 P = (Center - BitmapCenter) + Radius * PixelsPerMeter * Offset;
         
-        DrawBitmap(DrawBuffer, Stamp, P.X, P.Y);    
+        CompositeBitmap(DrawBuffer, Stamp, P.X, P.Y);    
     }
 
     
@@ -590,9 +545,8 @@ GameEngine(game_memory *Memory, game_input *Input,
         entity *Entity = AddHero(GameState);
         GameState->Player.EntityIndex = Entity->Sim.StorageIndex;
 
-        GameState->GroundBitmap = MakeEmptyBitmap(&GameState->Arena, 256, 256);
+        GameState->GroundBitmap = MakeEmptyBitmap(&GameState->Arena, 512, 512);
         DrawTestGround(GameState, &GameState->GroundBitmap);
-
         GameState->Initialized = true;
     }
     
@@ -621,8 +575,8 @@ GameEngine(game_memory *Memory, game_input *Input,
 
     ClearScreen(Video);
     
-    DrawBitmap(Video, &GameState->GroundBitmap, 125, 125, 1.0f);
-
+    RenderBitmap(Video, &GameState->GroundBitmap, 0, 0, 1.0f);
+    
     tile_map *TileMap = &GameState->TileMap;
     u32 TileSpanX = 17 * 3;
     u32 TileSpanY = 9 * 3;
@@ -715,7 +669,7 @@ GameEngine(game_memory *Memory, game_input *Input,
                           EntityGroundPointY + Piece->Offset.Y };
             if (Piece->Bitmap)
             {
-                DrawBitmap(Video, Piece->Bitmap,
+                RenderBitmap(Video, Piece->Bitmap,
                            Center.X,
                            Center.Y,
                            Piece->A);
@@ -723,7 +677,7 @@ GameEngine(game_memory *Memory, game_input *Input,
             else
             {
                 v2 HalfDim = 0.5f * Piece->Dim;
-                DrawRectangle(Video, Center - HalfDim, Center + HalfDim,
+                RenderRectangle(Video, Center - HalfDim, Center + HalfDim,
                               Piece->R, Piece->G, Piece->B);
             }
         }
