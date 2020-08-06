@@ -553,22 +553,22 @@ Win32ProcessKeyboardInput(HWND Window, win32_state *State, game_controller_input
                 }
                 if (WasDown != IsDown)
                 {
-                    if (KeyCode == VK_LEFT)
+                    if (KeyCode == VK_LEFT || KeyCode == 'A')
                     {
                         Win32ProcessButtonState(&Input->Left, IsDown);
                         OutputDebugStringA("Left\n");
                     }
-                    else if (KeyCode == VK_RIGHT)
+                    else if (KeyCode == VK_RIGHT || KeyCode == 'D')
                     {
                         Win32ProcessButtonState(&Input->Right, IsDown);
                         OutputDebugStringA("Right\n");
                     }
-                    else if (KeyCode == VK_UP)
+                    else if (KeyCode == VK_UP || KeyCode == 'W')
                     {
                         Win32ProcessButtonState(&Input->Up, IsDown);
                         OutputDebugStringA("Up\n");
                     }
-                    else if (KeyCode == VK_DOWN)
+                    else if (KeyCode == VK_DOWN || KeyCode == 'S')
                     {
                         Win32ProcessButtonState(&Input->Down, IsDown);
                         OutputDebugStringA("Down\n");
@@ -782,7 +782,7 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
             char *GameLibraryFileName = "game.dll";
             win32_game_code GameCode = Win32LoadGameCode(GameLibraryFileName);
             game_input GameInput = {};
-            GameInput.dtForFrame = 16.0f / 1000.0f;
+            GameInput.dtForFrame = 1.0f/MonitorHz;
 
             while (Running)
             {

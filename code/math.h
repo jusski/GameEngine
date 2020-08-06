@@ -61,7 +61,7 @@ RectCentHalfDim(v2 Center, v2 HalfDim)
 inline rectangle2
 RectCentDim(v2 Center, v2 Dim)
 {
-    rectangle2 Result = RectCentHalfDim(Center, Dim);
+    rectangle2 Result = RectCentHalfDim(Center, 0.5f*Dim);
     
     return(Result);
 }

@@ -91,10 +91,46 @@ struct v2
     r32& operator[](int i) {return E[i];}
 };
 
+union v3
+{
+    struct
+    {
+        r32 R,G,B;    
+    };
+    struct
+    {
+        r32 X,Y,Z;
+    };
+    struct
+    {
+        v2 XY;
+        r32 _Ignore;
+    };
+    
+};
+
+
 inline v2
 V2(s32 X, s32 Y)
 {
     v2 Result = {(r32)X, (r32)Y};
+
+    return(Result);
+}
+
+inline v3
+V3(s32 X, s32 Y, s32 Z)
+{
+    v3 Result = {(r32)X, (r32)Y, (r32)Z};
+
+    return(Result);
+}
+
+
+inline v3
+V3(u32 X, u32 Y, u32 Z)
+{
+    v3 Result = {(r32)X, (r32)Y, (r32)Z};
 
     return(Result);
 }
@@ -132,19 +168,6 @@ union v4
     r32 E[4];
 };
 
-
-union v3
-{
-    struct
-    {
-        r32 R,G,B;
-    };
-    struct
-    {
-        r32 X,Y,Z;
-    };
-    r32 E[3];
-};
 
 struct rectangle2
 {

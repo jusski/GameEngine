@@ -14,12 +14,14 @@ DefaultMoveSpec()
 
     return Result;
 }
-internal void DrawHitpoints(entity_visible_piece_group *PieceGroup, sim_entity *Entity)
+internal void
+DrawHitpoints(entity_visible_piece_group *PieceGroup, sim_entity *Entity)
 {
     
 }
 
-internal void UpdateSword(sim_region *SimRegion, sim_entity *Entity, float dt)
+internal void
+UpdateSword(sim_region *SimRegion, sim_entity *Entity, float dt)
 {
     
 }
@@ -65,7 +67,7 @@ DrawLine(game_offscreen_bitmap *Bitmap, s32 x, s32 y, s32 Length, u32 Color)
 }
 
 internal void
-RenderRectangle(game_offscreen_bitmap *Bitmap, v2 TopLeft, v2 BottomRight,
+DrawRectangle(game_offscreen_bitmap *Bitmap, v2 TopLeft, v2 BottomRight,
               r32 R, r32 G, r32 B)
 {
     Assert(R >= 0 && R <= 1.0f);
@@ -77,10 +79,10 @@ RenderRectangle(game_offscreen_bitmap *Bitmap, v2 TopLeft, v2 BottomRight,
     BottomRight.X = (BottomRight.X > Bitmap->Width) ? Bitmap->Width : BottomRight.X;
     BottomRight.Y = (BottomRight.Y > Bitmap->Height) ? Bitmap->Height : BottomRight.Y;
 
-    s32 MinX = RoundR32ToS32(TopLeft.X);
-    s32 MinY = RoundR32ToS32(TopLeft.Y);
-    s32 MaxX = RoundR32ToS32(BottomRight.X);
-    s32 MaxY = RoundR32ToS32(BottomRight.Y);
+    s32 MinX = (s32)(TopLeft.X);
+    s32 MinY = (s32)(TopLeft.Y);
+    s32 MaxX = (s32)(BottomRight.X);
+    s32 MaxY = (s32)(BottomRight.Y);
 
     u32 Color =
         RoundR32ToU32(B * 255.0f) << 0 |
@@ -102,14 +104,14 @@ RenderRectangle(game_offscreen_bitmap *Bitmap, v2 TopLeft, v2 BottomRight,
 }
 
 internal void
-RenderRectangle(game_offscreen_bitmap *Bitmap,
+DrawRectangle(game_offscreen_bitmap *Bitmap,
               r32 TopLeftX, r32 TopLeftY,
               r32 BottomRightX, r32 BottomRightY,
               r32 R, r32 G, r32 B)
 {
     v2 TopLeft = {TopLeftX, TopLeftY};
     v2 BottomRight = {BottomRightX, BottomRightY};
-    RenderRectangle(Bitmap, TopLeft, BottomRight, R, G, B);
+    DrawRectangle(Bitmap, TopLeft, BottomRight, R, G, B);
 }
 
 inline u32
@@ -173,8 +175,18 @@ LoadBitmap(read_file_to_memory ReadFileToMemory, char *FileName)
     return(Result);
 }
 
+internal void
+ClearBitmap(loaded_bitmap *Bitmap)
+{
+    if (Bitmap->Bytes)
+    {
+        u32 TotalBitmapSize = Bitmap->Width * Bitmap->Height * BITMAP_BYTES_PER_PIXEL;
+        ZeroMemory(TotalBitmapSize, Bitmap->Bytes);
+    }
+}
+
 internal loaded_bitmap
-MakeEmptyBitmap(memory_arena *Arena, u32 Width, u32 Height)
+MakeEmptyBitmap(memory_arena *Arena, u32 Width, u32 Height, bool32 ClearToZero = true)
 {
     loaded_bitmap Result = {};
     
@@ -184,8 +196,11 @@ MakeEmptyBitmap(memory_arena *Arena, u32 Width, u32 Height)
     u32 TotalBitmapSize = Width * Height * BITMAP_BYTES_PER_PIXEL;
     Result.Bytes = PushArray(Arena, TotalBitmapSize, u8);
 
-    ZeroMemory(TotalBitmapSize, Result.Bytes);
-
+    if(ClearToZero)
+    {
+        ClearBitmap(&Result);
+    }
+    
     return(Result);
 }
 
@@ -197,18 +212,18 @@ CompositeBitmap(loaded_bitmap *Destination, loaded_bitmap *Source,
     s32 ClipX = (TopLeftX < 0) ? (s32)-TopLeftX : 0;
     s32 ClipY = (TopLeftY < 0) ? (s32)-TopLeftY : 0;
 
-    r32 BottomRightX = TopLeftX + (r32)Source->Width;
-    r32 BottomRightY = TopLeftY + (r32)Source->Height;
-    BottomRightX = (BottomRightX > Destination->Width) ? Destination->Width : BottomRightX;
-    BottomRightY = (BottomRightY > Destination->Height) ? Destination->Height : BottomRightY;
+    s32 BottomRightX = (s32)TopLeftX + Source->Width;
+    s32 BottomRightY = (s32)TopLeftY + Source->Height;
+    BottomRightX = (BottomRightX > (s32)Destination->Width) ? Destination->Width : BottomRightX;
+    BottomRightY = (BottomRightY > (s32)Destination->Height) ? Destination->Height : BottomRightY;
 
     TopLeftX = (TopLeftX < 0) ? 0 : TopLeftX;
     TopLeftY = (TopLeftY < 0) ? 0 : TopLeftY;
     
-    s32 MinX = RoundR32ToS32(TopLeftX);
-    s32 MinY = RoundR32ToS32(TopLeftY);
-    s32 MaxX = RoundR32ToS32(BottomRightX);
-    s32 MaxY = RoundR32ToS32(BottomRightY);
+    s32 MinX = (s32)(TopLeftX);
+    s32 MinY = (s32)(TopLeftY);
+    s32 MaxX = (s32)(BottomRightX);
+    s32 MaxY = (s32)(BottomRightY);
     
     u32 *DestinationRow = (u32 *)Destination->Bytes + Destination->Width*MinY + MinX;
     u32 *SourceRow = (u32 *)Source->Bytes;
@@ -221,22 +236,24 @@ CompositeBitmap(loaded_bitmap *Destination, loaded_bitmap *Source,
         u32 *SourcePixel = SourceRow;
         for (s32 x = MinX; x < MaxX; x++)
         {
-            
-            r32 SAN = ((*SourcePixel >> 24) & 0xFF) / 255.0f;
-            r32 SR = (r32)((*SourcePixel >> 16) & 0xFF);
-            r32 SG = (r32)((*SourcePixel >>  8) & 0xFF);
-            r32 SB = (r32)((*SourcePixel >>  0) & 0xFF);
 
-            r32 DAN = ((*DestinationPixel >> 24) & 0xFF) / 255.0f;
-            r32 DR = (r32)((*DestinationPixel >> 16) & 0xFF);
-            r32 DG = (r32)((*DestinationPixel >>  8) & 0xFF);
-            r32 DB = (r32)((*DestinationPixel >>  0) & 0xFF);
+            u32 SA = ((*SourcePixel >> 24) & 0xFF);
+            u32 SR = ((*SourcePixel >> 16) & 0xFF);
+            u32 SG = ((*SourcePixel >> 8)  & 0xFF);
+            u32 SB = ((*SourcePixel >> 0)  & 0xFF);
 
-            //TODO on empty bitmap render is bad
-            r32 AN = SAN + DAN - (SAN * DAN); 
-            u32 R = (u32)(DR*(1.0f - SAN) + SR); 
-            u32 G = (u32)(DG*(1.0f - SAN) + SG);
-            u32 B = (u32)(DB*(1.0f - SAN) + SB);
+            u32 DA = ((*DestinationPixel >> 24) & 0xFF);
+            u32 DR = ((*DestinationPixel >> 16) & 0xFF);
+            u32 DG = ((*DestinationPixel >> 8)  & 0xFF);
+            u32 DB = ((*DestinationPixel >> 0)  & 0xFF);
+
+            r32 SAN = (r32)SA / 255.0f;
+            r32 DAN = (r32)DA / 255.0f;
+            r32 AN = SAN + DAN - (SAN * DAN ); 
+
+            u32 R = DR + SR-(DR*SA)/256;
+            u32 G = DG + SG-(DG*SA)/256;
+            u32 B = DB + SB-(DB*SA)/256;
 
             u32 A = (u32)(AN * 255.0f);
             
@@ -250,26 +267,28 @@ CompositeBitmap(loaded_bitmap *Destination, loaded_bitmap *Source,
 }
 
 internal void
-RenderBitmap(game_offscreen_bitmap *Destination, loaded_bitmap *Source,
+DrawBitmap(game_offscreen_bitmap *Destination, loaded_bitmap *Source,
            r32 TopLeftX, r32 TopLeftY, r32 Alpha = 1.0f)
 {
 
     s32 ClipX = (TopLeftX < 0) ? (s32)-TopLeftX : 0;
     s32 ClipY = (TopLeftY < 0) ? (s32)TopLeftY : 0;
 
-    r32 BottomRightX = TopLeftX + (r32)Source->Width;
-    r32 BottomRightY = TopLeftY + (r32)Source->Height;
+    s32 BottomRightX = (s32)TopLeftX + Source->Width;
+    s32 BottomRightY = (s32)TopLeftY + Source->Height;
     BottomRightX = (BottomRightX > Destination->Width) ? Destination->Width : BottomRightX;
     BottomRightY = (BottomRightY > Destination->Height) ? Destination->Height : BottomRightY;
 
     TopLeftX = (TopLeftX < 0) ? 0 : TopLeftX;
     TopLeftY = (TopLeftY < 0) ? 0 : TopLeftY;
-    
-    s32 MinX = RoundR32ToS32(TopLeftX);
-    s32 MinY = RoundR32ToS32(TopLeftY);
-    s32 MaxX = RoundR32ToS32(BottomRightX);
-    s32 MaxY = RoundR32ToS32(BottomRightY);
-    
+
+    s32 MinX = (s32)(TopLeftX);
+    s32 MinY = (s32)(TopLeftY);
+    s32 MaxX = (s32)(BottomRightX);
+    s32 MaxY = (s32)(BottomRightY);
+
+    Assert(MaxX - MinX <= (s32)Source->Width);
+    Assert(MaxY - MinY <= (s32)Source->Height);
     u32 *DestinationRow = (u32 *)Destination->Memory + Destination->Width*MinY + MinX;
     u32 *SourceRow = (u32 *)Source->Bytes + Source->Width * (Source->Height - 1);
     SourceRow += ClipY*Source->Width + ClipX;
@@ -326,7 +345,7 @@ AddWall(game_state *GameState, tile_map_position P)
 {
     entity *Entity = AddEntity(GameState, EntityType_Wall, P);
 
-    Entity->Sim.Width = GameState->TileMap.TileSizeInMeters;
+    Entity->Sim.Width = GameState->WallSize;
     Entity->Sim.Height = Entity->Sim.Width;
     AddFlag(&Entity->Sim, EntityFlag_Collides);
 
@@ -341,7 +360,7 @@ AddHero(game_state *GameState)
     tile_map_position P = GameState->CameraPosition;
     entity *Entity = AddEntity(GameState, EntityType_Hero, P);
 
-    Entity->Sim.Width = 0.5f * GameState->TileMap.TileSizeInMeters;
+    Entity->Sim.Width = 0.8f * GameState->WallSize;
     Entity->Sim.Height = Entity->Sim.Width;
     AddFlag(&Entity->Sim, EntityFlag_Collides | EntityFlag_Moves);
 
@@ -387,7 +406,7 @@ PushRect(entity_visible_piece_group *Group, v2 Dim, v4 Color)
 internal void
 ClearScreen(game_offscreen_bitmap *Buffer)
 {
-    RenderRectangle(Buffer, 0, 0, (r32)Buffer->Width, (r32)Buffer->Height,
+    DrawRectangle(Buffer, 0, 0, (r32)Buffer->Width, (r32)Buffer->Height,
                   1.0f, 0.0f, 1.0f);
 }
 
@@ -449,18 +468,176 @@ DrawTestGround(game_state *GameState, loaded_bitmap *DrawBuffer)
     
 }
 
-extern "C" void
-GameEngine(game_memory *Memory, game_input *Input,
-           game_sound_output_buffer *Sound,
-           game_offscreen_bitmap *Video)
+internal void
+DrawTileGround(game_state *GameState, loaded_bitmap *DrawBuffer, tile_map_position Position)
 {
-    Assert(sizeof(game_state) <= Memory->PersistentStorageSize);
-    
-    game_state *GameState = (game_state *)Memory->PersistentStorage;
-    game_controller_input *Keyboard = &Input->Keyboard;
+    //TODO Seed by wong integer hash?
+    random_series Series = RandomSeed(131*Position.X + 592*Position.Y);
+    r32 PixelsPerMeter = GameState->PixelsPerMeter;
+    u32 Width = DrawBuffer->Width;
+    u32 Height = DrawBuffer->Height;
+    loaded_bitmap *Stamp = 0;
 
-    if (!GameState->Initialized)
+    for(u32 Index = 0; Index < 15; ++Index)
     {
+        Stamp = &GameState->Ground[RandomChoice(&Series, 4)];
+        v2 BitmapCenter = 0.5f * V2(Stamp->Width, Stamp->Height);
+
+        v2 Offset = V2(Width * RandomUnilateral(&Series),
+                       Height * RandomUnilateral(&Series));
+        
+        v2 P = Offset - BitmapCenter;
+        
+        CompositeBitmap(DrawBuffer, Stamp, P.X, P.Y);    
+    }
+
+    for(u32 Index = 0; Index < 15; ++Index)
+    {
+        Stamp = &GameState->Grass[RandomChoice(&Series, 2)];
+        v2 BitmapCenter = 0.5f * V2(Stamp->Width, Stamp->Height);
+
+        v2 Offset = V2(Width * RandomUnilateral(&Series),
+                       Height * RandomUnilateral(&Series));
+        
+        v2 P = Offset - BitmapCenter;
+        
+        CompositeBitmap(DrawBuffer, Stamp, P.X, P.Y);    
+    }
+
+    for(u32 Index = 0; Index < 15; ++Index)
+    {
+        Stamp = &GameState->Tuft[RandomChoice(&Series, 3)];
+        v2 BitmapCenter = 0.5f * V2(Stamp->Width, Stamp->Height);
+
+        v2 Offset = V2(Width * RandomUnilateral(&Series),
+                       Height * RandomUnilateral(&Series));
+        
+        v2 P = Offset - BitmapCenter;
+        
+        CompositeBitmap(DrawBuffer, Stamp, P.X, P.Y);    
+    }
+    
+    for(u32 Index = 0; Index < 5; ++Index)
+    {
+        Stamp = &GameState->Rock[RandomChoice(&Series, 4)];
+        v2 BitmapCenter = 0.5f * V2(Stamp->Width, Stamp->Height);
+
+        v2 Offset = V2(Width * RandomUnilateral(&Series),
+                       Height * RandomUnilateral(&Series));
+        
+        v2 P = Offset - BitmapCenter;
+        
+        CompositeBitmap(DrawBuffer, Stamp, P.X, P.Y);    
+    }
+
+    
+    
+}
+internal void
+DrawRectangleOutline(game_offscreen_bitmap *Bitmap, v2 TopLeft, v2 BottomRight, v3 Color)
+{
+    r32 T = 1.0f;
+    r32 Width = BottomRight.X - TopLeft.X;
+    r32 Height = TopLeft.Y - BottomRight.Y;
+    // Top and Bottom lines
+    DrawRectangle(Bitmap, TopLeft, v2{BottomRight.X, TopLeft.Y + T}, Color.R, Color.G, Color.B);
+    DrawRectangle(Bitmap, v2{TopLeft.X, BottomRight.Y - T}, BottomRight, Color.R, Color.G, Color.B);
+
+    // Right and Left lines
+    DrawRectangle(Bitmap, TopLeft, v2{TopLeft.X + T, BottomRight.Y}, Color.R, Color.G, Color.B);
+    DrawRectangle(Bitmap, v2{BottomRight.X - T, TopLeft.Y}, BottomRight, Color.R, Color.G, Color.B);
+    
+
+}
+
+internal void
+DrawTilesOutline(game_offscreen_bitmap *Bitmap, game_state *GameState, tile_map_position Origin)
+{
+    tile_map *TileMap = &GameState->TileMap;
+    u32 TileSizeInPixels = TileMap->TileSizeInPixels;
+    r32 PixelsPerMeter = GameState->PixelsPerMeter;
+
+    v2 ScreenCenter = 0.5f * V2(Bitmap->Width, Bitmap->Height);
+    
+    v2 ScreenDimInMeters = GameState->MetersPerPixel * V2(Bitmap->Width, Bitmap->Height);
+    rectangle2 ScreenBounds = RectCentDim(V2(0,0), ScreenDimInMeters);
+
+    tile_map_position MinTile = MapIntoTileSpace(TileMap, Origin, ScreenBounds.Min);
+    tile_map_position MaxTile = MapIntoTileSpace(TileMap, Origin, ScreenBounds.Max);
+
+    for (s32 Y = MinTile.Y; Y <= MaxTile.Y; ++Y)
+    {
+        for (s32 X = MinTile.X; X <= MaxTile.X; ++X)
+        {
+            tile_map_position Position = {X, Y};
+            v2 RelP = SubtractPosition(TileMap, Position, Origin);
+            v2 ScreenP = ScreenCenter + PixelsPerMeter * V2(RelP.X, -RelP.Y);
+            v2 TopLeft = ScreenP - 0.5f*V2(TileSizeInPixels, TileSizeInPixels);
+            v2 BottomRight = ScreenP + 0.5f*V2(TileSizeInPixels, TileSizeInPixels);
+            v3 Color = {};
+            DrawRectangleOutline(Bitmap, TopLeft, BottomRight, Color );
+        }
+    }
+}
+
+internal void
+DrawGroundBuffers(game_offscreen_bitmap *Bitmap, game_state *GameState,
+                  transient_state *TranState, tile_map_position Origin)
+{
+    
+    tile_map *TileMap = &GameState->TileMap;
+    ground_buffer *Buffers = TranState->GroundBuffers;
+    loaded_bitmap *Template = &TranState->GroundBitmapTemplate;
+    
+    u32 TileSizeInPixels = TileMap->TileSizeInPixels;
+    r32 PixelsPerMeter = GameState->PixelsPerMeter;
+
+    v2 ScreenCenter = 0.5f * V2(Bitmap->Width, Bitmap->Height);
+    
+    v2 ScreenDimInMeters = GameState->MetersPerPixel * V2(Bitmap->Width, Bitmap->Height);
+    rectangle2 ScreenBounds = RectCentDim(V2(0,0), ScreenDimInMeters);
+
+    tile_map_position MinTile = MapIntoTileSpace(TileMap, Origin, ScreenBounds.Min);
+    tile_map_position MaxTile = MapIntoTileSpace(TileMap, Origin, ScreenBounds.Max);
+
+    ground_buffer *EmptyGroundBuffer = 0;
+    for (s32 Y = MinTile.Y; Y <= MaxTile.Y; ++Y)
+    {
+        for (s32 X = MinTile.X; X <= MaxTile.X; ++X)
+        {
+            tile_map_position Position = {X, Y};
+            bool32 NotFound = true;
+            for (u32 Index = 0; Index < TranState->GroundBufferCount; ++Index)
+            {
+                ground_buffer *GroundBuffer = Buffers + Index;
+                
+                if (IsInSameTile(Position, GroundBuffer->P))
+                {
+                    NotFound = false;
+                    break;
+                }
+                else if (!IsValid(GroundBuffer->P))
+                {
+                    EmptyGroundBuffer = GroundBuffer;
+                }
+            }
+            if (EmptyGroundBuffer && NotFound)
+            {
+                EmptyGroundBuffer->P = Position;
+                Template->Bytes = EmptyGroundBuffer->Bitmap;
+                DrawTileGround(GameState, Template, Position);
+                EmptyGroundBuffer = 0;
+            }
+        }
+    }
+}
+
+
+
+internal void
+InitializeGameState(game_state *GameState, game_offscreen_bitmap *Video, game_memory *Memory)
+{
+    
         loaded_bitmap HeroFacingRight = LoadBitmap(Memory->ReadFileToMemory, "car_right.bmp");
         GameState->HeroFacingRight.Body = HeroFacingRight;
         loaded_bitmap HeroFacingLeft = LoadBitmap(Memory->ReadFileToMemory, "car_left.bmp");
@@ -488,18 +665,18 @@ GameEngine(game_memory *Memory, game_input *Input,
         GameState->Rock[2] = LoadBitmap(Memory->ReadFileToMemory, "test2/rock02.bmp");
         GameState->Rock[3] = LoadBitmap(Memory->ReadFileToMemory, "test2/rock03.bmp");
 
-        GameState->SecondsPerFrame = 16.0f / 1000.0f;
-
         InitializeArena(&GameState->Arena,
                         Memory->PersistentStorageSize - sizeof(*GameState),
                         (u8 *)Memory->PersistentStorage + sizeof(*GameState));
         
         GameState->TileMap = {};
         tile_map *TileMap = &GameState->TileMap;
-        TileMap->TileSizeInMeters = 1.0f;
-        TileMap->TileSizeInPixels = 40;
         
-        GameState->PixelsPerMeter = (r32)TileMap->TileSizeInPixels / TileMap->TileSizeInMeters;
+        GameState->PixelsPerMeter = 40.0f;
+        GameState->MetersPerPixel = 1.0f/GameState->PixelsPerMeter;
+        
+        TileMap->TileSizeInPixels = 256;
+        TileMap->TileSizeInMeters = TileMap->TileSizeInPixels * GameState->MetersPerPixel;
 
         GameState->CameraPosition = {};
 
@@ -520,6 +697,7 @@ GameEngine(game_memory *Memory, game_input *Input,
             
             };
 #if 1
+        GameState->WallSize = 1.0f;
         s32 Y = INT32_MAX / 2;
         for (s32 i = 0; i < Rows; i++, Y++)
         {
@@ -528,7 +706,10 @@ GameEngine(game_memory *Memory, game_input *Input,
             {
                 if(TileMap1[i][j] == 1)
                 {
-                    tile_map_position P = {i,j};
+                    tile_map_position P = {};
+                    //TODO Do we need wall size here?
+                    v2 Delta = {GameState->WallSize * j, GameState->WallSize * i};
+                    P = MapIntoTileSpace(TileMap, P, Delta);
                     AddWall(GameState, P);
                 }
                 else
@@ -545,11 +726,66 @@ GameEngine(game_memory *Memory, game_input *Input,
         entity *Entity = AddHero(GameState);
         GameState->Player.EntityIndex = Entity->Sim.StorageIndex;
 
-        GameState->GroundBitmap = MakeEmptyBitmap(&GameState->Arena, 512, 512);
+        r32 ScreenOverDraw = 1.5f;
+        u32 GroundWidth = RoundR32ToU32((r32)Video->Width * ScreenOverDraw);
+        u32 GroundHeight = RoundR32ToU32((r32)Video->Height * ScreenOverDraw);
+        GameState->GroundBitmap = MakeEmptyBitmap(&GameState->Arena, GroundWidth, GroundHeight);
         DrawTestGround(GameState, &GameState->GroundBitmap);
-        GameState->Initialized = true;
+        GameState->GroundP = GameState->CameraPosition;
+
+        GameState->IsInitialized = true;
+}
+
+
+internal void
+InitializeTranState(transient_state *TranState, game_state *GameState,
+                    game_offscreen_bitmap *Video, game_memory *Memory)
+{
+    InitializeArena(&TranState->Arena,
+                    Memory->TransientStorageSize - sizeof(transient_state),
+                    (u8 *)Memory->TransientStorage + sizeof(transient_state));
+
+    TranState->GroundBufferCount = 32;
+    TranState->GroundBuffers = PushArray(&TranState->Arena, TranState->GroundBufferCount, ground_buffer);
+
+    u32 GroundWidth = GameState->TileMap.TileSizeInPixels;
+    u32 GroundHeight = GroundWidth;
+    loaded_bitmap *Template = &TranState->GroundBitmapTemplate;
+        
+    for(u32 Index = 0; Index < TranState->GroundBufferCount; ++Index)
+    {
+        ground_buffer *GroundBuffer = TranState->GroundBuffers + Index;
+        *Template = MakeEmptyBitmap(&TranState->Arena, GroundWidth, GroundHeight, false);
+        GroundBuffer->Bitmap = Template->Bytes;
+        GroundBuffer->P = NullPosition();
+    }
+
+    TranState->IsInitialized = true;    
+}
+
+extern "C" void
+GameEngine(game_memory *Memory, game_input *Input,
+           game_sound_output_buffer *Sound,
+           game_offscreen_bitmap *Video)
+{
+    Assert(sizeof(game_state) <= Memory->PersistentStorageSize);
+    game_state *GameState = (game_state *)Memory->PersistentStorage;
+    
+    Assert(sizeof(transient_state) <= Memory->TransientStorageSize);
+    transient_state *TranState = (transient_state *)Memory->TransientStorage;
+
+    game_controller_input *Keyboard = &Input->Keyboard;
+
+    if (!GameState->IsInitialized)
+    {
+        InitializeGameState(GameState, Video, Memory);
     }
     
+
+    if(!TranState->IsInitialized)
+    {
+        InitializeTranState(TranState, GameState, Video, Memory);
+    }
                 
     controlled_hero *ConHero = &GameState->Player;
     ConHero->ddP = {};
@@ -557,38 +793,60 @@ GameEngine(game_memory *Memory, game_input *Input,
     v2 Accelaration = {0.0f, 0.0f};
     if (Keyboard->Right.IsDown)
     {
-        ConHero->ddP.X = 1.0f;               
+        ConHero->ddP.X += 1.0f;               
     }
     if (Keyboard->Left.IsDown)
     {
-        ConHero->ddP.X = -1.0f;
+        ConHero->ddP.X += -1.0f;
     }
     if (Keyboard->Down.IsDown)
     {
-        ConHero->ddP.Y = -1.0f;
+        ConHero->ddP.Y += -1.0f;
     }
     if (Keyboard->Up.IsDown)
     {
-        ConHero->ddP.Y = 1.0f;
+        ConHero->ddP.Y += 1.0f;
     }
 
 
-    ClearScreen(Video);
+    v2 ScreenCenter = 0.5f * V2(Video->Width, Video->Height);
+
+//    ClearScreen(Video);
     
-    RenderBitmap(Video, &GameState->GroundBitmap, 0, 0, 1.0f);
+    v2 GroundBitmapDim  = V2(TranState->GroundBitmapTemplate.Width,
+                             TranState->GroundBitmapTemplate.Height);
+
+    for (u32 Index = 0; Index < TranState->GroundBufferCount; ++Index)
+    {
+        ground_buffer *GroundBuffer = TranState->GroundBuffers + Index;
+        
+        if (IsValid(GroundBuffer->P))
+        {
+
+            v2 P = ScreenCenter - 0.5f *GroundBitmapDim;
+            v2 Offset = SubtractPosition(&GameState->TileMap, GroundBuffer->P, GameState->CameraPosition);
+            Offset *= GameState->PixelsPerMeter;
+            Offset.Y = -Offset.Y;
+            P += Offset;
+
+            loaded_bitmap *Template = &TranState->GroundBitmapTemplate;
+            Template->Bytes = GroundBuffer->Bitmap;
+            
+            //TODO Make CompositeBitmap 
+            DrawBitmap(Video, Template, P.X, P.Y, 1.0f);
+            //CompositeBitmap(Video, Template, P.X, P.Y, 1.0f);
+        }
+    
+    }
     
     tile_map *TileMap = &GameState->TileMap;
-    u32 TileSpanX = 17 * 3;
-    u32 TileSpanY = 9 * 3;
-    v2 CameraDim = TileMap->TileSizeInMeters * v2{(r32)TileSpanX, (r32)TileSpanY};
+    v2 CameraDim = TileMap->TileSizeInMeters * v2{(r32)Video->Width, (r32)Video->Height};
     rectangle2 CameraBounds = RectCentDim(v2{0,0}, CameraDim);
-    
-    memory_arena SimArena;
-    InitializeArena(&SimArena, Memory->TransientStorageSize, Memory->TransientStorage);
-    sim_region *SimRegion = BeginSim(&SimArena, GameState, GameState->CameraPosition, CameraBounds);
 
-    real32 ScreenCenterX = 0.5f*(real32)Video->Width;
-    real32 ScreenCenterY = 0.5f*(real32)Video->Height;
+
+    memory_arena *SimArena = &TranState->Arena;
+    temporary_memory TempMemory = BeginTemporaryMemory(SimArena);
+    sim_region *SimRegion = BeginSim(SimArena, GameState, GameState->CameraPosition, CameraBounds);
 
     entity_visible_piece_group PieceGroup;
     PieceGroup.GameState = GameState;
@@ -607,7 +865,6 @@ GameEngine(game_memory *Memory, game_input *Input,
         real32 dt = Input->dtForFrame;
         move_spec MoveSpec = DefaultMoveSpec();
         v2 ddP = {};
-
         switch (Entity->Type)
         {
             case EntityType_Hero:
@@ -630,8 +887,7 @@ GameEngine(game_memory *Memory, game_input *Input,
                     }
 
                 }
-
-                
+        
                 v4 Color = {0.7f, 0.7f, 0.7f, 1.0f};
                 PushRect(&PieceGroup, v2{Entity->Width, Entity->Height}, Color);
                 PushBitmap(&PieceGroup, &HeroBitmaps->Body, -HeroBitmaps->Body.Offset);
@@ -642,7 +898,7 @@ GameEngine(game_memory *Memory, game_input *Input,
             case EntityType_Wall:
             {
                 v4 Color = {0.2f, 0.7f, 0.7f, 1.0f};
-                PushRect(&PieceGroup, v2{1, 1}, Color);
+                PushRect(&PieceGroup, v2{Entity->Width, Entity->Height}, Color);
             } break;
 
             default:
@@ -656,20 +912,19 @@ GameEngine(game_memory *Memory, game_input *Input,
         {
             MoveEntity(SimRegion, Entity, dt, &MoveSpec, ddP);
         }
-        
+
         r32 PixelsPerMeter = GameState->PixelsPerMeter;
-        
-        real32 EntityGroundPointX = ScreenCenterX + PixelsPerMeter * Entity->P.X;
-        real32 EntityGroundPointY = ScreenCenterY - PixelsPerMeter * Entity->P.Y;
+
+        //TODO FIX Y invert
+        v2 EntityGroundPoint = ScreenCenter + PixelsPerMeter * v2{Entity->P.X, -Entity->P.Y};
         
         for (u32 PieceIndex = 0; PieceIndex < PieceGroup.PieceCount; ++PieceIndex)
         {
             entity_visible_piece *Piece = PieceGroup.Pieces + PieceIndex;
-            v2 Center = { EntityGroundPointX + Piece->Offset.X,
-                          EntityGroundPointY + Piece->Offset.Y };
+            v2 Center = EntityGroundPoint + Piece->Offset;
             if (Piece->Bitmap)
             {
-                RenderBitmap(Video, Piece->Bitmap,
+                DrawBitmap(Video, Piece->Bitmap,
                            Center.X,
                            Center.Y,
                            Piece->A);
@@ -677,14 +932,20 @@ GameEngine(game_memory *Memory, game_input *Input,
             else
             {
                 v2 HalfDim = 0.5f * Piece->Dim;
-                RenderRectangle(Video, Center - HalfDim, Center + HalfDim,
+                DrawRectangle(Video, Center - HalfDim, Center + HalfDim,
                               Piece->R, Piece->G, Piece->B);
             }
         }
     }
+    DrawTilesOutline(Video, GameState, GameState->CameraPosition);
+    
+    DrawGroundBuffers(Video, GameState, TranState, GameState->CameraPosition);
+
 
     EndSim(SimRegion, GameState);
-
+    EndTemporaryMemory(&TempMemory);
+    DrawRectangleOutline(Video, V2(50,50), V2(80,80), V3(0, 0, 0));
+    DrawRectangle(Video, V2(0,0), V2(50,50), 0.0f, 0.0f, 0.0f);
 }
 
 

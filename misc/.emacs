@@ -495,6 +495,7 @@
 (defun make-without-asking ()
   "Make the current build."
   (interactive)
+  (save-some-buffers t)
   (if (find-project-directory) (compile casey-makescript))
   (other-window 1))
 (define-key global-map "\em" 'make-without-asking)
@@ -588,8 +589,8 @@
 (global-set-key (kbd "M-C-o") 'previous-line)
 (global-set-key (kbd "M-C-l") 'next-line)
 
-(global-set-key (kbd "C-;") 'forward-word)
 (global-set-key (kbd "C-k") 'backward-word)
+(global-set-key (kbd "C-;") 'forward-word)
 (global-set-key (kbd "C-o") 'previous-line)
 (global-set-key (kbd "C-l") 'next-line)
 
@@ -671,6 +672,8 @@ the documentation of `query-replace'"
              '("melpa" . "http://melpa.org/packages/") t)
 (package-initialize)
 (setq ido-auto-merge-work-directories-length -1)
+
+(setq ido-ignore-buffers '("\\` " "^\*"))
 
 (defun post-load-stuff ()
   (interactive)

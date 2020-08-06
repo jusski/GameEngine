@@ -111,7 +111,7 @@ BeginSim(memory_arena *SimArena, game_state *GameState,
     SimRegion->Origin = Origin;
     SimRegion->UpdatableBounds = UpdatableBounds;
 
-    r32 UpdatableSafetyMargin = 1.0f;
+    r32 UpdatableSafetyMargin = 5.0f;
     SimRegion->Bounds = AddRadiusTo(UpdatableBounds, UpdatableSafetyMargin, UpdatableSafetyMargin);
     
     ZeroArray(SimRegion->Hash);
@@ -257,8 +257,8 @@ MoveEntity(sim_region * SimRegion, sim_entity *Entity, r32 dt,
                 continue;
             }
 
-            r32 RadiusW = 0.5f*(Entity->Width + TileMap->TileSizeInMeters);
-            r32 RadiusH = 0.5f*(Entity->Height + TileMap->TileSizeInMeters);
+            r32 RadiusW = 0.5f*(Entity->Width + TestEntity->Width);
+            r32 RadiusH = 0.5f*(Entity->Height + TestEntity->Height);
 
             v2 Relative = StartPosition - TestEntity->P;
             if (HitsWall(-RadiusW, PositionDelta.X, PositionDelta.Y,
@@ -286,22 +286,22 @@ MoveEntity(sim_region * SimRegion, sim_entity *Entity, r32 dt,
                 WallNormal = v2{0.0f,-1.0f};
             }
 
-            T = T < 1.0f ? Maximum(0.0f, T-Epsilon) : T;
-            Entity->P = StartPosition + PositionDelta * T;
-            MoveSpec->DistanceRemaining -= DeltaLength * T;
             if (Hit)
             {
-                StartPosition += PositionDelta * T;
-                Entity->dP -= (Entity->dP * WallNormal) * WallNormal;
-                //TODO Player.P - StartPosition???
-                PositionDelta -= T * PositionDelta;
-                PositionDelta -= (PositionDelta * WallNormal) * WallNormal;
+                
             }
         }
-
+        // TODO IMPORTANT BUG move even its hit other entity
+        T = T < 1.0f ? Maximum(0.0f, T-Epsilon) : T;
+        Entity->P = StartPosition + PositionDelta * T;
+        MoveSpec->DistanceRemaining -= DeltaLength * T;
         if (Hit)
         {
-            
+            StartPosition += PositionDelta * T;
+            Entity->dP -= (Entity->dP * WallNormal) * WallNormal;
+            //TODO Player.P - StartPosition???
+            PositionDelta -= T * PositionDelta;
+            PositionDelta -= (PositionDelta * WallNormal) * WallNormal;
         }
         else
         {

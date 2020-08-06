@@ -1,5 +1,4 @@
-#ifndef HELLO_H_
-
+#pragma once
 
 #include "platform.h"
 #include "math.h"
@@ -15,29 +14,41 @@ struct memory_arena
     u32 Index;
 };
 
-#define PushStruct(Arena, Type) (Type *)PushArray_(Arena, 1, sizeof(Type))
-#define PushArray(Arena, Count, Type) (Type *)PushArray_(Arena, Count, sizeof(Type))
-
-internal void *
-PushArray_(memory_arena *Arena, u32 Count, u32 Size)
+struct ground_buffer
 {
-    Assert((Arena->Index += Count * Size) <= Arena->AvailableSize);
-    void *Result = Arena->Memory + Arena->Index;
-    Arena->Index += Count * Size;
+    //NOTE This is the center of Bitmap
+    tile_map_position P; 
+    u8 *Bitmap;
+    
+};
 
-    return(Result);
-}
+struct temporary_memory
+{
+    memory_arena *Arena;
+    u32 Used;
+    s32 Counter;
+};
 
 struct loaded_bitmap
 {
     u32 Width;
     u32 Height;
-    u8* Bytes;
+    u8 *Bytes;
 
     u32 Pitch;
 
     v2 Offset;
 };  
+
+struct transient_state
+{
+    bool32 IsInitialized;
+    memory_arena Arena;
+    u32 GroundBufferCount;
+    ground_buffer *GroundBuffers;
+    loaded_bitmap GroundBitmapTemplate;
+    
+};
 
 struct loaded_file
 { 
@@ -134,6 +145,7 @@ struct game_state
     r32 SecondsPerFrame;
     controlled_hero Player;
     tile_map TileMap;
+    r32 WallSize;
 
     tile_map_position CameraPosition;
     u32 CameraFollowingEntityIndex;
@@ -145,9 +157,10 @@ struct game_state
     loaded_bitmap Tuft[3];
 
     loaded_bitmap GroundBitmap;
+    tile_map_position GroundP;
     
     memory_arena Arena;
-    bool32 Initialized;
+    bool32 IsInitialized;
     
     union {
         hero_bitmaps HeroBitmaps[2];
@@ -158,7 +171,8 @@ struct game_state
     };
     u32 EntityCount;
     entity Entities[1024];
-    r32 PixelsPerMeter; 
+    r32 PixelsPerMeter;
+    r32 MetersPerPixel;
 };
 
 struct entity_visible_piece
@@ -179,5 +193,38 @@ struct entity_visible_piece_group
 extern "C" void GameEngine(game_memory *Memory, game_input *Input, game_sound_output_buffer *Sound, game_offscreen_bitmap *Video);
 
 
-#define HELLO_H_
-#endif
+#define PushStruct(Arena, Type) (Type *)PushArray_(Arena, 1, sizeof(Type))
+#define PushArray(Arena, Count, Type) (Type *)PushArray_(Arena, Count, sizeof(Type))
+
+internal void *
+PushArray_(memory_arena *Arena, u32 Count, u32 Size)
+{
+    Assert((Arena->Index += Count * Size) <= Arena->AvailableSize);
+    void *Result = Arena->Memory + Arena->Index;
+    Arena->Index += Count * Size;
+
+    return(Result);
+}
+
+internal temporary_memory
+BeginTemporaryMemory(memory_arena *Arena)
+{
+    temporary_memory Result = {};
+
+    Result.Arena = Arena;
+    Assert(Arena->Index < Arena->AvailableSize);
+    Result.Used = Arena->Index;
+    Result.Counter = 1;
+
+    return(Result);
+}
+
+internal void
+EndTemporaryMemory(temporary_memory *TempMemory)
+{
+    memory_arena *Arena = TempMemory->Arena;
+    Assert(Arena->Index >= TempMemory->Used);
+    Arena->Index = TempMemory->Used;
+    Assert(TempMemory->Counter > 0);
+    --TempMemory->Counter;
+}

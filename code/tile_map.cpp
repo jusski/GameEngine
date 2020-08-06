@@ -1,7 +1,9 @@
+#define INVALID_MAP_POSITION INT32_MAX
+
 internal tile_map_position
 NullPosition()
 {
-    tile_map_position Result = {INT32_MAX, INT32_MAX};
+    tile_map_position Result = {INVALID_MAP_POSITION, INVALID_MAP_POSITION};
 
     return(Result);
 }
@@ -9,7 +11,7 @@ NullPosition()
 internal bool32
 IsValid(tile_map_position P)
 {
-    bool32 Result = P.X != INT32_MAX;
+    bool32 Result = P.X != INVALID_MAP_POSITION;
 
     return(Result);
 }
