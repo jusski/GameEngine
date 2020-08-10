@@ -471,68 +471,113 @@ DrawTestGround(game_state *GameState, loaded_bitmap *DrawBuffer)
 internal void
 DrawTileGround(game_state *GameState, loaded_bitmap *DrawBuffer, tile_map_position Position)
 {
-    //TODO Seed by wong integer hash?
-    random_series Series = RandomSeed(131*Position.X + 592*Position.Y);
     r32 PixelsPerMeter = GameState->PixelsPerMeter;
-    u32 Width = DrawBuffer->Width;
-    u32 Height = DrawBuffer->Height;
+    s32 Width = DrawBuffer->Width;
+    s32 Height = DrawBuffer->Height;
     loaded_bitmap *Stamp = 0;
 
-    for(u32 Index = 0; Index < 15; ++Index)
+    for (s32 OffsetY = -1; OffsetY < 2; ++OffsetY)
     {
-        Stamp = &GameState->Ground[RandomChoice(&Series, 4)];
-        v2 BitmapCenter = 0.5f * V2(Stamp->Width, Stamp->Height);
+        for (s32 OffsetX = -1; OffsetX < 2; ++OffsetX)
+        {
+            s32 PositionX = Position.X + OffsetX;
+            s32 PositionY = Position.Y + OffsetY;
+            //TODO Seed by wong integer hash?
+            random_series Series = RandomSeed(131*PositionX + 592*PositionY);
 
-        v2 Offset = V2(Width * RandomUnilateral(&Series),
-                       Height * RandomUnilateral(&Series));
-        
-        v2 P = Offset - BitmapCenter;
-        
-        CompositeBitmap(DrawBuffer, Stamp, P.X, P.Y);    
-    }
+            v2 Center = V2(Width * OffsetX, Height * OffsetY);
+            for(u32 Index = 0; Index < 5; ++Index)
+            {
+                Stamp = &GameState->Ground[RandomChoice(&Series, 4)];
+                v2 BitmapCenter = 0.5f * V2(Stamp->Width, Stamp->Height);
 
-    for(u32 Index = 0; Index < 15; ++Index)
-    {
-        Stamp = &GameState->Grass[RandomChoice(&Series, 2)];
-        v2 BitmapCenter = 0.5f * V2(Stamp->Width, Stamp->Height);
-
-        v2 Offset = V2(Width * RandomUnilateral(&Series),
-                       Height * RandomUnilateral(&Series));
+                v2 Offset = V2(Width * RandomUnilateral(&Series),
+                               Height * RandomUnilateral(&Series));
         
-        v2 P = Offset - BitmapCenter;
+                v2 P = Center + Offset - BitmapCenter;
         
-        CompositeBitmap(DrawBuffer, Stamp, P.X, P.Y);    
-    }
-
-    for(u32 Index = 0; Index < 15; ++Index)
-    {
-        Stamp = &GameState->Tuft[RandomChoice(&Series, 3)];
-        v2 BitmapCenter = 0.5f * V2(Stamp->Width, Stamp->Height);
-
-        v2 Offset = V2(Width * RandomUnilateral(&Series),
-                       Height * RandomUnilateral(&Series));
-        
-        v2 P = Offset - BitmapCenter;
-        
-        CompositeBitmap(DrawBuffer, Stamp, P.X, P.Y);    
+                CompositeBitmap(DrawBuffer, Stamp, P.X, P.Y);    
+            }        
+        }
     }
     
-    for(u32 Index = 0; Index < 5; ++Index)
+    for (s32 OffsetY = -1; OffsetY < 2; ++OffsetY)
     {
-        Stamp = &GameState->Rock[RandomChoice(&Series, 4)];
-        v2 BitmapCenter = 0.5f * V2(Stamp->Width, Stamp->Height);
+        for (s32 OffsetX = -1; OffsetX < 2; ++OffsetX)
+        {
+            s32 PositionX = Position.X + OffsetX;
+            s32 PositionY = Position.Y + OffsetY;
+            random_series Series = RandomSeed(131*PositionX + 592*PositionY);
+     
+            v2 Center = V2(Width * OffsetX, Height * OffsetY);    
+            for(u32 Index = 0; Index < 5; ++Index)
+            {
+                Stamp = &GameState->Grass[RandomChoice(&Series, 2)];
+                v2 BitmapCenter = 0.5f * V2(Stamp->Width, Stamp->Height);
 
-        v2 Offset = V2(Width * RandomUnilateral(&Series),
-                       Height * RandomUnilateral(&Series));
+                v2 Offset = V2(Width * RandomUnilateral(&Series),
+                               Height * RandomUnilateral(&Series));
         
-        v2 P = Offset - BitmapCenter;
+                v2 P = Center + Offset - BitmapCenter;
         
-        CompositeBitmap(DrawBuffer, Stamp, P.X, P.Y);    
+                CompositeBitmap(DrawBuffer, Stamp, P.X, P.Y);    
+            }
+        }
+    }
+    
+    for (s32 OffsetY = -1; OffsetY < 2; ++OffsetY)
+    {
+        for (s32 OffsetX = -1; OffsetX < 2; ++OffsetX)
+        {
+            s32 PositionX = Position.X + OffsetX;
+            s32 PositionY = Position.Y + OffsetY;
+            random_series Series = RandomSeed(131*PositionX + 592*PositionY);
+     
+            v2 Center = V2(Width * OffsetX, Height * OffsetY);    
+
+            for(u32 Index = 0; Index < 15; ++Index)
+            {
+                Stamp = &GameState->Tuft[RandomChoice(&Series, 3)];
+                v2 BitmapCenter = 0.5f * V2(Stamp->Width, Stamp->Height);
+
+                v2 Offset = V2(Width * RandomUnilateral(&Series),
+                               Height * RandomUnilateral(&Series));
+        
+                v2 P = Center + Offset - BitmapCenter;
+        
+                CompositeBitmap(DrawBuffer, Stamp, P.X, P.Y);    
+                
+            }
+        }
     }
 
-    
+    for (s32 OffsetY = -1; OffsetY < 2; ++OffsetY)
+    {
+        for (s32 OffsetX = -1; OffsetX < 2; ++OffsetX)
+        {
+            s32 PositionX = Position.X + OffsetX;
+            s32 PositionY = Position.Y + OffsetY;
+            random_series Series = RandomSeed(131*PositionX + 592*PositionY);
+     
+            v2 Center = V2(Width * OffsetX, Height * OffsetY);    
+            
+            for(u32 Index = 0; Index < 1; ++Index)
+            {
+                Stamp = &GameState->Rock[RandomChoice(&Series, 4)];
+                v2 BitmapCenter = 0.5f * V2(Stamp->Width, Stamp->Height);
+
+                v2 Offset = V2(Width * RandomUnilateral(&Series),
+                               Height * RandomUnilateral(&Series));
+        
+                v2 P = Center + Offset - BitmapCenter;
+        
+                CompositeBitmap(DrawBuffer, Stamp, P.X, P.Y);    
+            }
+        }
+    }
     
 }
+
 internal void
 DrawRectangleOutline(game_offscreen_bitmap *Bitmap, v2 TopLeft, v2 BottomRight, v3 Color)
 {
@@ -600,33 +645,45 @@ DrawGroundBuffers(game_offscreen_bitmap *Bitmap, game_state *GameState,
     tile_map_position MinTile = MapIntoTileSpace(TileMap, Origin, ScreenBounds.Min);
     tile_map_position MaxTile = MapIntoTileSpace(TileMap, Origin, ScreenBounds.Max);
 
-    ground_buffer *EmptyGroundBuffer = 0;
+    
     for (s32 Y = MinTile.Y; Y <= MaxTile.Y; ++Y)
     {
         for (s32 X = MinTile.X; X <= MaxTile.X; ++X)
         {
             tile_map_position Position = {X, Y};
-            bool32 NotFound = true;
+            ground_buffer *FarthestBuffer = 0;
+            r32 FarthestBufferDistance = 0.0f;
             for (u32 Index = 0; Index < TranState->GroundBufferCount; ++Index)
             {
                 ground_buffer *GroundBuffer = Buffers + Index;
                 
                 if (IsInSameTile(Position, GroundBuffer->P))
                 {
-                    NotFound = false;
+                    FarthestBuffer = 0;
                     break;
                 }
                 else if (!IsValid(GroundBuffer->P))
                 {
-                    EmptyGroundBuffer = GroundBuffer;
+                    FarthestBuffer = GroundBuffer;
+                    FarthestBufferDistance = 99999.0f;
+                }
+                else
+                {
+                    v2 RelP = SubtractPosition(TileMap, Origin, GroundBuffer->P);
+                    r32 BufferDistance = LengthSquared(RelP);
+                    if (BufferDistance > FarthestBufferDistance)
+                    {
+                        FarthestBufferDistance = BufferDistance;
+                        FarthestBuffer = GroundBuffer;
+                    }
                 }
             }
-            if (EmptyGroundBuffer && NotFound)
+            if (FarthestBuffer)
             {
-                EmptyGroundBuffer->P = Position;
-                Template->Bytes = EmptyGroundBuffer->Bitmap;
+                FarthestBuffer->P = Position;
+                Template->Bytes = FarthestBuffer->Bitmap;
+                ClearBitmap(Template);
                 DrawTileGround(GameState, Template, Position);
-                EmptyGroundBuffer = 0;
             }
         }
     }
@@ -811,7 +868,7 @@ GameEngine(game_memory *Memory, game_input *Input,
 
     v2 ScreenCenter = 0.5f * V2(Video->Width, Video->Height);
 
-//    ClearScreen(Video);
+    ClearScreen(Video);
     
     v2 GroundBitmapDim  = V2(TranState->GroundBitmapTemplate.Width,
                              TranState->GroundBitmapTemplate.Height);
@@ -937,7 +994,7 @@ GameEngine(game_memory *Memory, game_input *Input,
             }
         }
     }
-    DrawTilesOutline(Video, GameState, GameState->CameraPosition);
+    //  DrawTilesOutline(Video, GameState, GameState->CameraPosition);
     
     DrawGroundBuffers(Video, GameState, TranState, GameState->CameraPosition);
 

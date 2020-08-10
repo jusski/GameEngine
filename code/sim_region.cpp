@@ -173,6 +173,7 @@ EndSim(sim_region *Region, game_state *GameState)
 
         if (SimEntity->StorageIndex == GameState->CameraFollowingEntityIndex)
         {
+
             GameState->CameraPosition = P;
         }
     }
