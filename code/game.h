@@ -6,12 +6,13 @@
 #include "tile_map.h"
 #include "intrinsic.h"
 #include "sim_region.h"
+//#include "render_group.h"
 
 struct memory_arena
 {
     u8 *Memory;
     u32 AvailableSize;
-    u32 Index;
+    memory_index Index;
 };
 
 struct ground_buffer
@@ -37,7 +38,7 @@ struct loaded_bitmap
 
     u32 Pitch;
 
-    v2 Offset;
+    v2 Align;
 };  
 
 struct transient_state
@@ -175,26 +176,12 @@ struct game_state
     r32 MetersPerPixel;
 };
 
-struct entity_visible_piece
-{
-    loaded_bitmap *Bitmap;
-    v2 Offset;
-    r32 R, G, B, A;
-    v2 Dim;
-};
-
-struct entity_visible_piece_group
-{
-    game_state *GameState;
-    u32 PieceCount;
-    entity_visible_piece Pieces[32];
-};
-
 extern "C" void GameEngine(game_memory *Memory, game_input *Input, game_sound_output_buffer *Sound, game_offscreen_bitmap *Video);
 
 
 #define PushStruct(Arena, Type) (Type *)PushArray_(Arena, 1, sizeof(Type))
 #define PushArray(Arena, Count, Type) (Type *)PushArray_(Arena, Count, sizeof(Type))
+#define PushSize(Arena, Count) PushArray(Arena, Count, u8)
 
 internal void *
 PushArray_(memory_arena *Arena, u32 Count, u32 Size)

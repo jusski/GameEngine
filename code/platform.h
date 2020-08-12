@@ -14,6 +14,7 @@
 #define INVALID_CODE_PATH Assert(!"InvalidCodePath")
 #define ArrayCount(Array) (sizeof(Array) / (sizeof(Array[0])))
 #define Trace(Format, ...) {_snprintf_s(OutputDebugMessage, sizeof(OutputDebugMessage), Format, ## __VA_ARGS__); OutputDebugStringA(OutputDebugMessage);}
+#define InvalidDefaultCase default: {Assert(0);} break;
 
 #define Minimum(A, B) (A) < (B) ? (A) : (B)
 #define Maximum(A, B) (A) > (B) ? (A) : (B)
@@ -22,6 +23,7 @@
 #define ZeroStruct(Struct) ZeroMemory(sizeof(Struct), &(Struct))
 
 #define MonitorHz 30
+typedef size_t memory_index;
 
 typedef __int8 int8;
 typedef __int16 int16;
@@ -109,6 +111,23 @@ union v3
     
 };
 
+union v4
+{
+    struct
+    {
+        r32 X,Y,Z,W;
+     };
+    struct
+    {
+        r32 R,G,B,A; 
+    };
+    struct
+    {
+        v3 RGB;
+        r32 _Ignore;
+    };
+};
+
 
 inline v2
 V2(s32 X, s32 Y)
@@ -120,6 +139,14 @@ V2(s32 X, s32 Y)
 
 inline v3
 V3(s32 X, s32 Y, s32 Z)
+{
+    v3 Result = {(r32)X, (r32)Y, (r32)Z};
+
+    return(Result);
+}
+
+inline v3
+V3(r32 X, r32 Y, r32 Z)
 {
     v3 Result = {(r32)X, (r32)Y, (r32)Z};
 
@@ -154,19 +181,6 @@ V2(r32 X, r32 Y)
 }
 
 
-
-union v4
-{
-    struct
-    {
-        r32 R,G,B,A;
-    };
-    struct
-    {
-        r32 X,Y,Z,W;
-    };
-    r32 E[4];
-};
 
 
 struct rectangle2

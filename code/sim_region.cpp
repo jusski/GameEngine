@@ -1,3 +1,4 @@
+
 internal sim_entity_hash *
 GetHashFromStorageIndex(sim_region *SimRegion, u32 StorageIndex) 
 {

@@ -4,6 +4,8 @@ inline r32
 Lerp(r32 A, r32 t, r32 B)
 {
     r32 Result = (1.0f - t)*A + t*B;
+
+    return(Result);
 }
 
 
