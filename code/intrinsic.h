@@ -60,7 +60,7 @@ SquareRoot(r32 Value)
 inline r32
 LengthSquared(v2 Value)
 {
-    r32 Result = Square(Value.X) + Square(Value.Y);
+    r32 Result = Square(Value.x) + Square(Value.y);
 
     return(Result);
 }

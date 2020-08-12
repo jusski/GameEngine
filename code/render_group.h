@@ -6,6 +6,8 @@ enum render_group_entry_type
     RenderGroupEntryType_render_entry_clear,
     RenderGroupEntryType_render_entry_rect,
     RenderGroupEntryType_render_entry_bitmap,
+    RenderGroupEntryType_render_entry_composite,
+    
 };
 
 struct entry_header
@@ -32,6 +34,17 @@ struct render_entry_bitmap
 {
     entry_header Header;
     loaded_bitmap *Bitmap;
+    v2 Offset;
+    r32 Alpha;
+};
+
+struct render_entry_composite
+{
+    entry_header Header;
+    loaded_bitmap *Source;
+    loaded_bitmap *Destination;
+    v2 P;
+    
     v2 Offset;
     r32 Alpha;
 };

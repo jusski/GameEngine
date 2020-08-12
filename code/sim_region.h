@@ -15,6 +15,7 @@ enum entity_type
     EntityType_Wall,
     EntityType_Sword,
     EntityType_Monstar,
+    EntityType_Tree,
 };
 
 struct sim_entity;

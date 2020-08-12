@@ -30,17 +30,17 @@ IsInSameTile(tile_map_position A, tile_map_position B)
 internal void
 NormaliseTileMapPosition(tile_map *TileMap, tile_map_position *Position)
 {
-    s32 TilesDiv = RoundR32ToS32(Position->Offset.X / TileMap->TileSizeInMeters);
-    r32 TilesMod = Position->Offset.X - ((r32)TilesDiv * TileMap->TileSizeInMeters);
+    s32 TilesDiv = RoundR32ToS32(Position->Offset.x / TileMap->TileSizeInMeters);
+    r32 TilesMod = Position->Offset.x - ((r32)TilesDiv * TileMap->TileSizeInMeters);
 
     Position->X += TilesDiv;
-    Position->Offset.X = TilesMod;
+    Position->Offset.x = TilesMod;
 
-    TilesDiv = RoundR32ToS32(Position->Offset.Y / TileMap->TileSizeInMeters);
-    TilesMod = Position->Offset.Y - ((r32)TilesDiv * TileMap->TileSizeInMeters);
+    TilesDiv = RoundR32ToS32(Position->Offset.y / TileMap->TileSizeInMeters);
+    TilesMod = Position->Offset.y - ((r32)TilesDiv * TileMap->TileSizeInMeters);
 
     Position->Y += TilesDiv;
-    Position->Offset.Y = TilesMod;
+    Position->Offset.y = TilesMod;
     
 }
 
@@ -116,8 +116,8 @@ SubtractPosition(tile_map *TileMap, tile_map_position &A, tile_map_position &B)
 {
     v2 Result;
     
-    Result.X = (A.X - B.X)*TileMap->TileSizeInMeters;
-    Result.Y = (A.Y - B.Y)*TileMap->TileSizeInMeters;
+    Result.x = (A.X - B.X)*TileMap->TileSizeInMeters;
+    Result.y = (A.Y - B.Y)*TileMap->TileSizeInMeters;
     Result += A.Offset - B.Offset;
     
     return(Result);

@@ -25,10 +25,10 @@ IsInRectangle(rectangle2 &Rectangle, v2 &P)
 {
     bool32 Result = false;
 
-    if((Rectangle.Min.X <= P.X) &&
-       (Rectangle.Min.Y <= P.Y) &&
-       (Rectangle.Max.X > P.X) &&
-       (Rectangle.Max.Y > P.Y))
+    if((Rectangle.Min.x <= P.x) &&
+       (Rectangle.Min.y <= P.y) &&
+       (Rectangle.Max.x > P.x) &&
+       (Rectangle.Max.y > P.y))
     {
         Result = true;
     }

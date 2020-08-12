@@ -263,26 +263,26 @@ MoveEntity(sim_region * SimRegion, sim_entity *Entity, r32 dt,
             r32 RadiusH = 0.5f*(Entity->Height + TestEntity->Height);
 
             v2 Relative = StartPosition - TestEntity->P;
-            if (HitsWall(-RadiusW, PositionDelta.X, PositionDelta.Y,
-                         Relative.X, Relative.Y, -RadiusH, RadiusH, &T))
+            if (HitsWall(-RadiusW, PositionDelta.x, PositionDelta.y,
+                         Relative.x, Relative.y, -RadiusH, RadiusH, &T))
             {
                 Hit = true;
                 WallNormal = v2{1.0f,0.0f};
             }
-            if (HitsWall(RadiusW, PositionDelta.X, PositionDelta.Y,
-                         Relative.X, Relative.Y, -RadiusH, RadiusH, &T))
+            if (HitsWall(RadiusW, PositionDelta.x, PositionDelta.y,
+                         Relative.x, Relative.y, -RadiusH, RadiusH, &T))
             {
                 Hit = true;
                 WallNormal = v2{-1.0f,0.0f};
             }
-            if (HitsWall(-RadiusH, PositionDelta.Y, PositionDelta.X,
-                         Relative.Y, Relative.X, -RadiusW, RadiusW, &T))
+            if (HitsWall(-RadiusH, PositionDelta.y, PositionDelta.x,
+                         Relative.y, Relative.x, -RadiusW, RadiusW, &T))
             {
                 Hit = true;
                 WallNormal = v2{0.0f,1.0f};
             }
-            if (HitsWall(RadiusH, PositionDelta.Y, PositionDelta.X,
-                         Relative.Y, Relative.X, -RadiusW, RadiusW, &T))
+            if (HitsWall(RadiusH, PositionDelta.y, PositionDelta.x,
+                         Relative.y, Relative.x, -RadiusW, RadiusW, &T))
             {
                 Hit = true;
                 WallNormal = v2{0.0f,-1.0f};
@@ -310,7 +310,7 @@ MoveEntity(sim_region * SimRegion, sim_entity *Entity, r32 dt,
             break;
         }
     }
-    if (Entity->dP.X > 0)
+    if (Entity->dP.x > 0)
     {
         Entity->FacingDirection = 1;
     }

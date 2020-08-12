@@ -15,14 +15,6 @@ struct memory_arena
     memory_index Index;
 };
 
-struct ground_buffer
-{
-    //NOTE This is the center of Bitmap
-    tile_map_position P; 
-    u8 *Bitmap;
-    
-};
-
 struct temporary_memory
 {
     memory_arena *Arena;
@@ -41,13 +33,20 @@ struct loaded_bitmap
     v2 Align;
 };  
 
+struct ground_buffer
+{
+    //NOTE This is the center of Bitmap
+    tile_map_position P; 
+    loaded_bitmap *Bitmap;
+    
+};
+
 struct transient_state
 {
     bool32 IsInitialized;
     memory_arena Arena;
     u32 GroundBufferCount;
-    ground_buffer *GroundBuffers;
-    loaded_bitmap GroundBitmapTemplate;
+    ground_buffer *GroundBuffers;;
     
 };
 
@@ -156,9 +155,6 @@ struct game_state
     loaded_bitmap Rock[4];
     loaded_bitmap Tree[3];
     loaded_bitmap Tuft[3];
-
-    loaded_bitmap GroundBitmap;
-    tile_map_position GroundP;
     
     memory_arena Arena;
     bool32 IsInitialized;

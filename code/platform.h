@@ -14,7 +14,7 @@
 #define INVALID_CODE_PATH Assert(!"InvalidCodePath")
 #define ArrayCount(Array) (sizeof(Array) / (sizeof(Array[0])))
 #define Trace(Format, ...) {_snprintf_s(OutputDebugMessage, sizeof(OutputDebugMessage), Format, ## __VA_ARGS__); OutputDebugStringA(OutputDebugMessage);}
-#define InvalidDefaultCase default: {Assert(0);} break;
+#define InvalidDefaultCase default: {INVALID_CODE_PATH;} break;
 
 #define Minimum(A, B) (A) < (B) ? (A) : (B)
 #define Maximum(A, B) (A) > (B) ? (A) : (B)
@@ -71,8 +71,8 @@ struct bitmap_format
     u32 SizeOfBitmap;
     u32 HorizontalResolution;
     u32 VerticalResolution;
-    u32 ColorsUsed;
-    u32 ImportantColors;
+    u32 colorsUsed;
+    u32 Importantcolors;
     u32 RedMask;
     u32 GreenMask;
     u32 BlueMask;
@@ -86,7 +86,7 @@ struct v2
     {
         struct
         {
-            r32 X, Y;
+            r32 x, y;
         };
         r32 E[2];        
     };
@@ -97,15 +97,15 @@ union v3
 {
     struct
     {
-        r32 R,G,B;    
+        r32 r,g,b;    
     };
     struct
     {
-        r32 X,Y,Z;
+        r32 x,y,z;
     };
     struct
     {
-        v2 XY;
+        v2 xy;
         r32 _Ignore;
     };
     
@@ -115,69 +115,74 @@ union v4
 {
     struct
     {
-        r32 X,Y,Z,W;
+        r32 x,y,z,w;
      };
     struct
     {
-        r32 R,G,B,A; 
+        r32 r,g,b,a; 
     };
     struct
     {
-        v3 RGB;
+        v3 rgb;
+        r32 _Ignore;
+    };
+    struct
+    {
+        v3 xyz;
         r32 _Ignore;
     };
 };
 
 
 inline v2
-V2(s32 X, s32 Y)
+V2(s32 x, s32 y)
 {
-    v2 Result = {(r32)X, (r32)Y};
+    v2 result = {(r32)x, (r32)y};
 
-    return(Result);
+    return(result);
 }
 
 inline v3
-V3(s32 X, s32 Y, s32 Z)
+V3(s32 x, s32 y, s32 z)
 {
-    v3 Result = {(r32)X, (r32)Y, (r32)Z};
+    v3 result = {(r32)x, (r32)y, (r32)z};
 
-    return(Result);
+    return(result);
 }
 
 inline v3
-V3(r32 X, r32 Y, r32 Z)
+V3(r32 x, r32 y, r32 z)
 {
-    v3 Result = {(r32)X, (r32)Y, (r32)Z};
+    v3 result = {(r32)x, (r32)y, (r32)z};
 
-    return(Result);
+    return(result);
 }
 
 
 inline v3
-V3(u32 X, u32 Y, u32 Z)
+V3(u32 x, u32 y, u32 z)
 {
-    v3 Result = {(r32)X, (r32)Y, (r32)Z};
+    v3 result = {(r32)x, (r32)y, (r32)z};
 
-    return(Result);
+    return(result);
 }
 
 
 inline v2
-V2(u32 X, u32 Y)
+V2(u32 x, u32 y)
 {
-    v2 Result = {(r32)X, (r32)Y};
+    v2 result = {(r32)x, (r32)y};
 
-    return(Result);
+    return(result);
 }
 
 
 inline v2
-V2(r32 X, r32 Y)
+V2(r32 x, r32 y)
 {
-    v2 Result = {(r32)X, (r32)Y};
+    v2 result = {(r32)x, (r32)y};
 
-    return(Result);
+    return(result);
 }
 
 
@@ -190,95 +195,95 @@ struct rectangle2
 };
 
 inline v2
-operator+(v2 A, v2 B)
+operator+(v2 a, v2 b)
 {
-    v2 Result;
-    Result.X = A.X + B.X;
-    Result.Y = A.Y + B.Y;
+    v2 result;
+    result.x = a.x + b.x;
+    result.y = a.y + b.y;
 
-    return(Result);
+    return(result);
 }
 
 inline v2
-operator*(r32 C, v2 A)
+operator*(r32 c, v2 a)
 {
-    v2 Result;
-    Result.X = C * A.X;
-    Result.Y = C * A.Y;
+    v2 result;
+    result.x = c * a.x;
+    result.y = c * a.y;
 
-    return(Result);
+    return(result);
 }
 
 inline v2
-operator*(v2 A, r32 C)
+operator*(v2 a, r32 c)
 {
-    v2 Result;
-    Result.X = C * A.X;
-    Result.Y = C * A.Y;
+    v2 result;
+    result.x = c * a.x;
+    result.y = c * a.y;
 
-    return(Result);
+    return(result);
 }
 
 inline v2
-operator-(v2 A, v2 B)
+operator-(v2 a, v2 b)
 {
-    v2 Result;
-    Result.X = A.X - B.X;
-    Result.Y = A.Y - B.Y;
+    v2 result;
+    result.x = a.x - b.x;
+    result.y = a.y - b.y;
 
-    return(Result);
+    return(result);
 }
 
 inline v2&
-operator-=(v2 &A, v2 B)
+operator-=(v2 &a, v2 b)
 {
-    A.X -= B.X;
-    A.Y -= B.Y;
-    return(A);
+    a.x -= b.x;
+    a.y -= b.y;
+    return(a);
 }
 
 inline v2&
-operator+=(v2 &A, v2 B)
+operator+=(v2 &a, v2 b)
 {
-    A.X += B.X;
-    A.Y += B.Y;
-    return A;
+    a.x += b.x;
+    a.y += b.y;
+    return a;
 }
 
 inline v2&
-operator*=(v2 &A, r32 C)
+operator*=(v2 &a, r32 c)
 {
-    A.X = C * A.X;
-    A.Y = C * A.Y;
+    a.x = c * a.x;
+    a.y = c * a.y;
 
-    return(A);
+    return(a);
 }
 
 inline v2
-operator-(v2 A)
+operator-(v2 a)
 {
-    v2 Result;
-    Result.X = -A.X;
-    Result.Y = -A.Y;
+    v2 result;
+    result.x = -a.x;
+    result.y = -a.y;
 
-    return(Result);
+    return(result);
 }
 
 inline r32
-operator*(v2 A, v2 B)
+operator*(v2 a, v2 b)
 {
-    r32 Result;
-    Result = A.X*B.X + A.Y*B.Y;
+    r32 result;
+    result = a.x*b.x + a.y*b.y;
 
-    return(Result);
+    return(result);
 }
 
 inline void
 ZeroMemory(u32 Size, void *Ptr)
 {
-    u8 *Byte = (u8 *)Ptr;
+    u8 *byte = (u8 *)Ptr;
     while(Size--)
     {
-        *Byte++ = 0;
+        *byte++ = 0;
     }
 }
