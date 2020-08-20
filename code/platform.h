@@ -106,7 +106,7 @@ union v3
     struct
     {
         v2 xy;
-        r32 _Ignore;
+        r32 _Ignore0;
     };
     
 };
@@ -124,68 +124,14 @@ union v4
     struct
     {
         v3 rgb;
-        r32 _Ignore;
+        r32 _Ignore0;
     };
     struct
     {
         v3 xyz;
-        r32 _Ignore;
+        r32 _Ignore1;
     };
 };
-
-
-inline v2
-V2(s32 x, s32 y)
-{
-    v2 result = {(r32)x, (r32)y};
-
-    return(result);
-}
-
-inline v3
-V3(s32 x, s32 y, s32 z)
-{
-    v3 result = {(r32)x, (r32)y, (r32)z};
-
-    return(result);
-}
-
-inline v3
-V3(r32 x, r32 y, r32 z)
-{
-    v3 result = {(r32)x, (r32)y, (r32)z};
-
-    return(result);
-}
-
-
-inline v3
-V3(u32 x, u32 y, u32 z)
-{
-    v3 result = {(r32)x, (r32)y, (r32)z};
-
-    return(result);
-}
-
-
-inline v2
-V2(u32 x, u32 y)
-{
-    v2 result = {(r32)x, (r32)y};
-
-    return(result);
-}
-
-
-inline v2
-V2(r32 x, r32 y)
-{
-    v2 result = {(r32)x, (r32)y};
-
-    return(result);
-}
-
-
 
 
 struct rectangle2
@@ -195,43 +141,120 @@ struct rectangle2
 };
 
 inline v2
-operator+(v2 a, v2 b)
+V2(r32 x, r32 y)
 {
-    v2 result;
-    result.x = a.x + b.x;
-    result.y = a.y + b.y;
+    v2 Result = {(r32)x, (r32)y};
 
-    return(result);
+    return(Result);
+}
+
+
+inline v2
+V2(s32 x, s32 y)
+{
+    v2 Result = {(r32)x, (r32)y};
+
+    return(Result);
+}
+
+
+inline v2
+V2(u32 x, u32 y)
+{
+    v2 Result = {(r32)x, (r32)y};
+
+    return(Result);
+}
+
+inline v3
+V3(s32 x, s32 y, s32 z)
+{
+    v3 Result = {(r32)x, (r32)y, (r32)z};
+
+    return(Result);
+}
+
+inline v3
+V3(r32 x, r32 y, r32 z)
+{
+    v3 Result = {(r32)x, (r32)y, (r32)z};
+
+    return(Result);
+}
+
+
+inline v3
+V3(u32 x, u32 y, u32 z)
+{
+    v3 Result = {(r32)x, (r32)y, (r32)z};
+
+    return(Result);
+}
+
+
+
+inline v4
+V4(s32 x, s32 y, s32 z, s32 w)
+{
+    v4 Result = {(r32)x, (r32)y, (r32) z, (r32) w};
+
+    return(Result);
+}
+
+inline v4
+V4(u32 x, u32 y, u32 z, u32 w)
+{
+    v4 Result = {(r32)x, (r32)y, (r32) z, (r32) w};
+
+    return(Result);
+}
+
+inline v4
+V4(r32 x, r32 y, r32 z, r32 w)
+{
+    v4 Result = {(r32)x, (r32)y, (r32) z, (r32) w};
+
+    return(Result);
 }
 
 inline v2
-operator*(r32 c, v2 a)
+operator+(v2 a, v2 b)
 {
-    v2 result;
-    result.x = c * a.x;
-    result.y = c * a.y;
+    v2 Result;
+    Result.x = a.x + b.x;
+    Result.y = a.y + b.y;
 
-    return(result);
+    return(Result);
 }
 
 inline v2
 operator*(v2 a, r32 c)
 {
-    v2 result;
-    result.x = c * a.x;
-    result.y = c * a.y;
+    v2 Result;
+    Result.x = c * a.x;
+    Result.y = c * a.y;
 
-    return(result);
+    return(Result);
+}
+
+inline v2
+operator*(r32 c, v2 a)
+{
+    v2 Result;
+    Result.x = c * a.x;
+    Result.y = c * a.y;
+
+    return(Result);
 }
 
 inline v2
 operator-(v2 a, v2 b)
 {
-    v2 result;
-    result.x = a.x - b.x;
-    result.y = a.y - b.y;
+    v2 Result;
+    Result.x = a.x - b.x;
+    Result.y = a.y - b.y;
 
-    return(result);
+    return(Result);
 }
 
 inline v2&
@@ -262,20 +285,131 @@ operator*=(v2 &a, r32 c)
 inline v2
 operator-(v2 a)
 {
-    v2 result;
-    result.x = -a.x;
-    result.y = -a.y;
+    v2 Result;
+    Result.x = -a.x;
+    Result.y = -a.y;
 
-    return(result);
+    return(Result);
 }
 
 inline r32
 operator*(v2 a, v2 b)
 {
-    r32 result;
-    result = a.x*b.x + a.y*b.y;
+    r32 Result;
+    Result = a.x*b.x + a.y*b.y;
 
-    return(result);
+    return(Result);
+}
+
+inline v3
+operator+(v3 a, v3 b)
+{
+    v3 Result;
+    Result.x = a.x + b.x;
+    Result.y = a.y + b.y;
+    Result.z = a.z + b.z;
+
+    return(Result);
+}
+
+inline v3
+operator*(r32 c, v3 a)
+{
+    v3 Result;
+    Result.x = c * a.x;
+    Result.y = c * a.y;
+    Result.z = c * a.z;
+
+    return(Result);
+}
+
+inline v3
+operator*(v3 a, r32 c)
+{
+    v3 Result;
+    Result.x = c * a.x;
+    Result.y = c * a.y;
+    Result.z = c * a.z;
+
+    return(Result);
+}
+
+inline v3&
+operator*=(v3 &a, r32 c)
+{
+    a.x = c * a.x;
+    a.y = c * a.y;
+    a.z = c * a.z;
+
+    return(a);
+}
+
+inline v3&
+operator+=(v3 &a, v3 &b)
+{
+    a.x += b.x;
+    a.y += b.y;
+    a.z += b.z;
+
+    return(a);
+}
+
+inline v4
+operator+(v4 a, v4 b)
+{
+    v4 Result;
+    Result.x = a.x + b.x;
+    Result.y = a.y + b.y;
+    Result.z = a.z + b.z;
+    Result.w = a.w + b.w;
+
+    return(Result);
+}
+
+inline v4
+operator*(r32 c, v4 a)
+{
+    v4 Result;
+    Result.x = c * a.x;
+    Result.y = c * a.y;
+    Result.z = c * a.z;
+    Result.w = c * a.w;
+
+    return(Result);
+}
+
+inline v4
+operator*(v4 a, r32 c)
+{
+    v4 Result;
+    Result.x = c * a.x;
+    Result.y = c * a.y;
+    Result.z = c * a.z;
+    Result.w = c * a.w;
+
+    return(Result);
+}
+
+inline v4&
+operator*=(v4 &a, r32 c)
+{
+    a.x = c * a.x;
+    a.y = c * a.y;
+    a.z = c * a.z;
+    a.w = c * a.w;
+
+    return(a);
+}
+
+inline v4&
+operator+=(v4 &a, v4 &b)
+{
+    a.x += b.x;
+    a.y += b.y;
+    a.z += b.z;
+    a.w += b.w;
+
+    return(a);
 }
 
 inline void

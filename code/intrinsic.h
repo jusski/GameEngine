@@ -1,4 +1,4 @@
-#if !defined(INTRINSIC_H)
+#pragma once
 
 #pragma warning(push, 0)
 #include <math.h>
@@ -66,6 +66,23 @@ LengthSquared(v2 Value)
 }
 
 inline r32
+LengthSquared(v3 Value)
+{
+    r32 Result = Square(Value.x) + Square(Value.y) + Square(Value.z);
+
+    return(Result);
+}
+
+inline r32
+LengthSquared(v4 Value)
+{
+    r32 Result = Square(Value.x) + Square(Value.y) +
+        Square(Value.z) + Square(Value.w);
+
+    return(Result);
+}
+
+inline r32
 Length(v2 Value)
 {
     r32 Result = SquareRoot(LengthSquared(Value));
@@ -73,5 +90,87 @@ Length(v2 Value)
     return(Result);
 }
 
-#define INTRINSIC_H
-#endif
+inline r32
+Length(v3 Value)
+{
+    r32 Result = SquareRoot(LengthSquared(Value));
+
+    return(Result);
+}
+
+inline r32
+Length(v4 Value)
+{
+    r32 Result = SquareRoot(LengthSquared(Value));
+
+    return(Result);
+}
+
+
+inline r32
+Sin(r32 A)
+{
+    r32 Result = (r32)sin(A);
+
+    return(Result);
+}
+
+inline r32
+Cos(r32 A)
+{
+    r32 Result = (r32)cos(A);
+
+    return(Result);
+}
+
+
+inline s32
+Floor(r32 A)
+{
+    s32 Result = (s32)floor(A);
+
+    return(Result);
+}
+
+inline s32
+Ceill(r32 A)
+{
+    s32 Result = (s32)ceill(A);
+
+    return(Result);
+}
+
+r32
+inline Clamp(r32 A, r32 Min, r32 Max)
+{
+    r32 Result;
+    Result = Maximum(A, Min);
+    Result = Minimum(A, Max);
+    
+    return(Result);
+}
+
+inline r32
+Clamp01(r32 A)
+{
+    r32 Result = Clamp(A, 0.0f, 1.0f);
+
+    return(Result);
+}
+
+inline v3
+Clamp01(v3 A)
+{
+    v3 Result = V3(Clamp01(A.r), Clamp01(A.g), Clamp01(A.b));
+        
+    return(Result);
+}
+
+inline v4
+Clamp01(v4 A)
+{
+    v4 Result = V4(Clamp01(A.r), Clamp01(A.g), Clamp01(A.b), Clamp01(A.a));
+        
+    return(Result);
+}
+

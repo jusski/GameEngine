@@ -94,21 +94,19 @@ LoadBitmap(read_file_to_memory ReadFileToMemory, char *FileName)
         u32 AlphaShift = ColorShift(BitmapFormat->AlphaMask);
         while(Length--)
         {
-            u32 A = (*Pixel >> AlphaShift) & 0xFF;
             u32 R = (*Pixel >> RedShift) & 0xFF;
             u32 G = (*Pixel >> GreenShift) & 0xFF;
             u32 B = (*Pixel >> BlueShift) & 0xFF;
+            u32 A = (*Pixel >> AlphaShift) & 0xFF;
 
-            r32 AN = A / 255.0f;
-            R = (u32)((r32)R * AN);
-            G = (u32)((r32)G * AN);
-            B = (u32)((r32)B * AN);
+            v4 Texel = V4(R, G, B, A);
+            Texel = SRGBA255ToLinear1(Texel);
+            Texel.r *= Texel.a;
+            Texel.g *= Texel.a;
+            Texel.b *= Texel.a;
+            Texel = Linear1ToSRGBA255(Texel);
 
-            *Pixel++ =
-                (A << 24) |
-                (R << 16) |
-                (G <<  8) |
-                (B <<  0);
+            *Pixel++ = PackBGRA(Texel);
         }
     }
     return(Result);
@@ -165,7 +163,7 @@ AddTree(game_state *GameState, tile_map_position P)
 {
     entity *Entity = AddEntity(GameState, EntityType_Tree, P);
 
-    Entity->Sim.Width = GameState->WallSize;
+    Entity->Sim.Width = 1.0f * GameState->WallSize;
     Entity->Sim.Height = Entity->Sim.Width;
     AddFlag(&Entity->Sim, EntityFlag_Collides);
 
@@ -201,10 +199,10 @@ AddHero(game_state *GameState)
 }
 
 internal void
-ClearScreen(game_offscreen_bitmap *Buffer)
+ClearScreen(loaded_bitmap *Buffer)
 {
     DrawRectangle(Buffer, 0, 0, (r32)Buffer->Width, (r32)Buffer->Height,
-                  V3(1, 0, 1));
+                  V4(1, 0, 1, 1));
 }
 
 internal void
@@ -318,7 +316,7 @@ CreateTileGround(game_state *GameState, loaded_bitmap *DrawBuffer, tile_map_posi
 }
 
 internal void
-DrawRectangleOutline(game_offscreen_bitmap *Bitmap, v2 TopLeft, v2 BottomRight, v3 Color)
+DrawRectangleOutline(loaded_bitmap *Bitmap, v2 TopLeft, v2 BottomRight, v4 Color)
 {
     r32 T = 1.0f;
     r32 Width = BottomRight.x - TopLeft.x;
@@ -335,7 +333,7 @@ DrawRectangleOutline(game_offscreen_bitmap *Bitmap, v2 TopLeft, v2 BottomRight, 
 }
 
 internal void
-DrawTilesOutline(game_offscreen_bitmap *Bitmap, game_state *GameState, tile_map_position Origin)
+DrawTilesOutline(loaded_bitmap *Bitmap, game_state *GameState, tile_map_position Origin)
 {
     tile_map *TileMap = &GameState->TileMap;
     u32 TileSizeInPixels = TileMap->TileSizeInPixels;
@@ -358,7 +356,7 @@ DrawTilesOutline(game_offscreen_bitmap *Bitmap, game_state *GameState, tile_map_
             v2 ScreenP = ScreenCenter + PixelsPerMeter * V2(RelP.x, -RelP.y);
             v2 TopLeft = ScreenP - 0.5f*V2(TileSizeInPixels, TileSizeInPixels);
             v2 BottomRight = ScreenP + 0.5f*V2(TileSizeInPixels, TileSizeInPixels);
-            v3 Color = {};
+            v4 Color = {0,0,0,1};
             DrawRectangleOutline(Bitmap, TopLeft, BottomRight, Color );
         }
     }
@@ -428,9 +426,32 @@ DrawGroundBuffers(game_offscreen_bitmap *Bitmap, game_state *GameState,
 }
 
 
-
 internal void
-InitializeGameState(game_state *GameState, game_offscreen_bitmap *Video, game_memory *Memory)
+MakeRect(loaded_bitmap *Bitmap)
+{
+    u32 Width = Bitmap->Width;
+    u32 Height = Bitmap->Height;
+    
+    for (u32 y = 0; y < Height; ++y)
+    {
+        for (u32 x = 0; x < Width; ++x)
+        {
+            u32 *Pixel = (u32 *)Bitmap->Bytes + y * Width + x;
+
+            *Pixel = (u32) 0xFF000000;
+            if ((x == 0) ||
+                (x == (Width - 1)) ||
+                (y == 0) ||
+                (y == (Height - 1)))
+            {
+                *Pixel = (u32) 0xFFFFFFFF;
+            }
+        }
+    }
+}
+    
+internal void
+InitializeGameState(game_state *GameState, loaded_bitmap *Video, game_memory *Memory)
 {
     
         loaded_bitmap HeroFacingRight = LoadBitmap(Memory->ReadFileToMemory, "car_right.bmp");
@@ -513,7 +534,8 @@ InitializeGameState(game_state *GameState, game_offscreen_bitmap *Video, game_me
                 else if (TileMap1[i][j] == 2)
                 {
                     tile_map_position P = {};
-                    v2 Delta = {GameState->WallSize * j, GameState->WallSize * i};
+                    v2 Delta = 1.5f * V2(GameState->WallSize * j,
+                                         GameState->WallSize * i);
                     P = MapIntoTileSpace(TileMap, P, Delta);
                     AddTree(GameState, P);
                 }
@@ -531,14 +553,15 @@ InitializeGameState(game_state *GameState, game_offscreen_bitmap *Video, game_me
         GameState->Player = {};
         entity *Entity = AddHero(GameState);
         GameState->Player.EntityIndex = Entity->Sim.StorageIndex;
-        
+
+
         GameState->IsInitialized = true;
 }
 
 
 internal void
 InitializeTranState(transient_state *TranState, game_state *GameState,
-                    game_offscreen_bitmap *Video, game_memory *Memory)
+                    loaded_bitmap *Video, game_memory *Memory)
 {
     InitializeArena(&TranState->Arena,
                     Memory->TransientStorageSize - sizeof(transient_state),
@@ -553,21 +576,75 @@ InitializeTranState(transient_state *TranState, game_state *GameState,
     for(u32 Index = 0; Index < TranState->GroundBufferCount; ++Index)
     {
         ground_buffer *GroundBuffer = TranState->GroundBuffers + Index;
+
         loaded_bitmap *Bitmap = MakeEmptyBitmap(&TranState->Arena, GroundWidth, GroundHeight, false);
         Bitmap->Align = 0.5f * V2(Bitmap->Width, Bitmap->Height);
 
         GroundBuffer->Bitmap = Bitmap;
         GroundBuffer->P = NullPosition();
     }
+    
+    loaded_bitmap *Template = MakeEmptyBitmap(&GameState->Arena, 100, 100);
+    GameState->SphereNormal = *Template;
+    MakeSphereNormalMap(&GameState->SphereNormal);
 
+    loaded_bitmap *Sky = MakeEmptyBitmap(&TranState->Arena, 100, 100);
+    u32 Height = Sky->Height / 3;
+    u32 Width = Sky->Width / 3;
+    bool32 SwapColor = false;
+    v4 SkyColor = V4(0.52f, 0.82f, 0.92f, 1.0f);
+    v4 DarkColor = V4(0,0,0,1);
+    for (u32 j = 0; j < Height; ++j)
+    {
+        for (u32 i = 0; i < Width; ++i)
+        {
+            v2 Offset = V2(i * Width, j * Height);
+            v4 Color = SwapColor ? SkyColor : DarkColor;
+            DrawRectangle(Sky, Offset, V2(Sky->Width, Sky->Height),
+                          Color);
+            SwapColor = !SwapColor;
+                
+        }
+    }
+
+    loaded_bitmap *Ground = MakeEmptyBitmap(&TranState->Arena, 100, 100);
+    Height = Ground->Height / 3;
+    Width = Ground->Width / 3;
+    SwapColor = false;
+    v4 GroundColor = V4(0.486f, 0.988f, 0.0f, 1.0f);
+    DarkColor = V4(0,0,0,1);
+    for (u32 j = 0; j < Height; ++j)
+    {
+        for (u32 i = 0; i < Width; ++i)
+        {
+            v2 Offset = V2(i * Width, j * Height);
+            v4 Color = SwapColor ? GroundColor : DarkColor;
+            DrawRectangle(Ground, Offset, V2(Ground->Width, Ground->Height),
+                          Color);
+            SwapColor = !SwapColor;
+                
+        }
+    }
+
+    
+    TranState->Sky.LOD[0] = Sky;
+    TranState->Ground.LOD[0] = Ground;
+    
     TranState->IsInitialized = true;    
 }
 
 extern "C" void
 GameEngine(game_memory *Memory, game_input *Input,
            game_sound_output_buffer *Sound,
-           game_offscreen_bitmap *Video)
+           game_offscreen_bitmap *OutputBitmap)
 {
+    loaded_bitmap Video_ = {};
+    loaded_bitmap *Video = &Video_;
+    Video->Bytes = (u8 *)OutputBitmap->Memory;
+    Video->Width = OutputBitmap->Width;
+    Video->Height = OutputBitmap->Height;
+    Video->Pitch = OutputBitmap->Pitch;
+    
     Assert(sizeof(game_state) <= Memory->PersistentStorageSize);
     game_state *GameState = (game_state *)Memory->PersistentStorage;
     
@@ -617,7 +694,7 @@ GameEngine(game_memory *Memory, game_input *Input,
     temporary_memory RenderMemory = BeginTemporaryMemory(TempArena);
     render_group *RenderGroup = AllocateRenderGroup(TempArena, GameState, MegaBytes(4));
 
-    PushClear(RenderGroup, V3(1,0,1));
+    PushClear(RenderGroup, V4(0.3f,0.3f,0.3f,0.0f));
     
     
     for (u32 Index = 0; Index < TranState->GroundBufferCount; ++Index)
@@ -680,14 +757,14 @@ GameEngine(game_memory *Memory, game_input *Input,
                     }
                 }
         
-                v3 Color = {0.7f, 0.7f, 0.7f};
+                v4 Color = {0.7f, 0.7f, 0.7f, 1.0f};
                 PushRect(RenderGroup, Entity->P, v2{Entity->Width, Entity->Height}, Color);
                 PushBitmap(RenderGroup, &HeroBitmaps->Body, Entity->P);
             } break;
 
             case EntityType_Wall:
             {
-                v3 Color = {0.2f, 0.7f, 0.7f};
+                v4 Color = {0.2f, 0.7f, 0.7f, 1.0f};
                 PushRect(RenderGroup, Entity->P, v2{Entity->Width, Entity->Height}, Color);
             } break;
 
@@ -707,18 +784,33 @@ GameEngine(game_memory *Memory, game_input *Input,
 
     }
 
-    RenderOutput(RenderGroup, Video, GameState->PixelsPerMeter);
-    DrawTilesOutline(Video, GameState, GameState->CameraPosition);
+    local_persist r32 Angle = 0;
+    Angle+= Input->dtForFrame;
+    v2 XAxis = 100.0f * V2(1.0f, 0.0f);
+    v2 YAxis = Perp(XAxis);
+    v4 Color = {1.0f, 1.0f, 1.0f, 1.0f};
+    v2 Origin = ScreenCenter - 0.5f*XAxis - 0.5f*YAxis; // 100 * Cos(Angle)*V2(1,0) + ScreenCenter;
+
+    loaded_bitmap *NormalMap = &GameState->SphereNormal;
+    PushTextureSlow(RenderGroup, Origin, XAxis, YAxis,
+                    &GameState->Tree[1], NormalMap, Color,
+                    &TranState->Sky, &TranState->Ground );
     
-    DrawGroundBuffers(Video, GameState, TranState, GameState->CameraPosition);
+                
+    RenderOutput(RenderGroup, Video, GameState->PixelsPerMeter);
+
+    DrawTilesOutline(Video, GameState, GameState->CameraPosition);
+
+    DrawBitmap(Video, &GameState->SphereNormal, ScreenCenter.x, ScreenCenter.y);
+    DrawBitmap(Video, TranState->Sky.LOD[0], 0, 0);
+    DrawBitmap(Video, TranState->Ground.LOD[0], 0, 110);
+    //DrawGroundBuffers(Video, GameState, TranState, GameState->CameraPosition);
 
 
     EndSim(SimRegion, GameState);
     EndTemporaryMemory(&SimMemory);
     EndTemporaryMemory(&RenderMemory);
     
-    DrawRectangleOutline(Video, V2(50,50), V2(80,80), V3(0, 0, 0));
-    DrawRectangle(Video, V2(0,0), V2(50,50), V3(0.0f, 0.0f, 0.0f));
 }
 
 

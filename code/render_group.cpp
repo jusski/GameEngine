@@ -1,5 +1,56 @@
 #include "render_group.h"
 
+internal bilinear_sample
+BilinearSample(u32 *TexelPtr, u32 Pitch)
+{
+    bilinear_sample Result;
+    
+    u32 *TexelAPtr = TexelPtr;
+    u32 *TexelBPtr = TexelPtr + 1;
+    u32 *TexelCPtr = TexelPtr + Pitch;
+    u32 *TexelDPtr = TexelPtr + Pitch + 1;
+
+    Result.A = UnpackBGRA(TexelAPtr);
+    Result.B = UnpackBGRA(TexelBPtr);
+    Result.C = UnpackBGRA(TexelCPtr);
+    Result.D = UnpackBGRA(TexelDPtr);
+
+    return(Result);
+}
+
+internal v4
+BilinearLerp(bilinear_sample &Texel, r32 s, r32 t)
+{
+    v4 TexelA = SRGBA255ToLinear1(Texel.A);
+    v4 TexelB = SRGBA255ToLinear1(Texel.B);
+    v4 TexelC = SRGBA255ToLinear1(Texel.C);
+    v4 TexelD = SRGBA255ToLinear1(Texel.D);
+
+    v4 Blend = Lerp(Lerp(TexelA, s, TexelB), t,
+                    Lerp(TexelC, s, TexelD));
+
+    return(Blend);
+}
+
+internal v4
+SampleEnviromentMap(enviroment_map *Map, v3 Normal)
+{
+    loaded_bitmap *Texture = Map->LOD[0];
+
+    r32 s = 0.0f;
+    r32 t = 0.0f;
+
+    u32 X = 0;
+    u32 Y = 0;
+                
+    u32 *TexelPtr = (u32 *)Texture->Bytes + Y * Texture->Width + X;
+
+    bilinear_sample Sample = BilinearSample(TexelPtr, Texture->Width);
+    v4 BlendedLight = BilinearLerp(Sample, s, t);
+
+    return(BlendedLight);
+}
+
 internal void
 CompositeBitmap(loaded_bitmap *Destination, loaded_bitmap *Source,
            v2 TopLeft, r32 Alpha = 1.0f)
@@ -47,9 +98,9 @@ CompositeBitmap(loaded_bitmap *Destination, loaded_bitmap *Source,
             r32 DAN = (r32)DA / 255.0f;
             r32 AN = SAN + DAN - (SAN * DAN ); 
 
-            u32 R = DR + SR-(DR*SA)/256;
-            u32 G = DG + SG-(DG*SA)/256;
-            u32 B = DB + SB-(DB*SA)/256;
+            u32 R = DR + SR-(DR*SA)/255;
+            u32 G = DG + SG-(DG*SA)/255;
+            u32 B = DB + SB-(DB*SA)/255;
 
             u32 A = (u32)(AN * 255.0f);
             
@@ -63,7 +114,7 @@ CompositeBitmap(loaded_bitmap *Destination, loaded_bitmap *Source,
 }
 
 internal void
-DrawBitmap(game_offscreen_bitmap *Destination, loaded_bitmap *Source,
+DrawBitmap(loaded_bitmap *Destination, loaded_bitmap *Source,
            r32 TopLeftX, r32 TopLeftY, r32 Alpha = 1.0f)
 {
 
@@ -72,8 +123,8 @@ DrawBitmap(game_offscreen_bitmap *Destination, loaded_bitmap *Source,
 
     s32 BottomRightX = (s32)TopLeftX + Source->Width;
     s32 BottomRightY = (s32)TopLeftY + Source->Height;
-    BottomRightX = (BottomRightX > Destination->Width) ? Destination->Width : BottomRightX;
-    BottomRightY = (BottomRightY > Destination->Height) ? Destination->Height : BottomRightY;
+    BottomRightX = (BottomRightX > (s32)Destination->Width) ? Destination->Width : BottomRightX;
+    BottomRightY = (BottomRightY > (s32)Destination->Height) ? Destination->Height : BottomRightY;
 
     TopLeftX = (TopLeftX < 0) ? 0 : TopLeftX;
     TopLeftY = (TopLeftY < 0) ? 0 : TopLeftY;
@@ -85,7 +136,7 @@ DrawBitmap(game_offscreen_bitmap *Destination, loaded_bitmap *Source,
 
     Assert(MaxX - MinX <= (s32)Source->Width);
     Assert(MaxY - MinY <= (s32)Source->Height);
-    u32 *DestinationRow = (u32 *)Destination->Memory + Destination->Width*MinY + MinX;
+    u32 *DestinationRow = (u32 *)Destination->Bytes + Destination->Width*MinY + MinX;
     u32 *SourceRow = (u32 *)Source->Bytes + Source->Width * (Source->Height - 1);
     SourceRow += ClipY*Source->Width + ClipX;
     
@@ -106,9 +157,9 @@ DrawBitmap(game_offscreen_bitmap *Destination, loaded_bitmap *Source,
             u32 DG = ((*DestinationPixel >> 8)  & 0xFF);
             u32 DB = ((*DestinationPixel >> 0)  & 0xFF);
 
-            u32 R = DR + SR-(DR*SA)/256;
-            u32 G = DG + SG-(DG*SA)/256;
-            u32 B = DB + SB-(DB*SA)/256;
+            u32 R = DR + SR-(DR*SA)/255;
+            u32 G = DG + SG-(DG*SA)/255;
+            u32 B = DB + SB-(DB*SA)/255;
 
             *DestinationPixel++ = (R << 16) | (G << 8) | (B << 0);
             SourcePixel++;
@@ -163,7 +214,7 @@ PushCompositeBitmap(render_group *Group, loaded_bitmap *Destination,
 }
 
 internal void
-PushRect(render_group *Group, v2 Offset, v2 Dim, v3 Color)
+PushRect(render_group *Group, v2 Offset, v2 Dim, v4 Color)
 {
     render_entry_rect *Entry = PushRenderEntry(Group, render_entry_rect);
 
@@ -175,8 +226,39 @@ PushRect(render_group *Group, v2 Offset, v2 Dim, v3 Color)
 
     Entry->Dim = PixelsPerMeter * Dim;
 }
+
 internal void
-PushClear(render_group *Group, v3 Color)
+PushRectSlow(render_group *Group, v2 Origin, v2 XAxis, v2 YAxis, v4 Color)
+{
+    render_entry_rect_slow *Entry = PushRenderEntry(Group, render_entry_rect_slow);
+
+    Entry->Color = Color;
+    Entry->Origin = Origin;
+    Entry->XAxis = XAxis;
+    Entry->YAxis = YAxis;
+    
+}
+
+internal void
+PushTextureSlow(render_group *Group, v2 Origin, v2 XAxis, v2 YAxis,
+                loaded_bitmap *Texture, loaded_bitmap *NormalMap,
+                v4 Color, enviroment_map *Sky, enviroment_map *Ground)
+{
+    render_entry_tex_slow *Entry = PushRenderEntry(Group, render_entry_tex_slow);
+
+    Entry->Origin = Origin;
+    Entry->XAxis = XAxis;
+    Entry->YAxis = YAxis;
+    Entry->Texture = Texture;
+    Entry->NormalMap = NormalMap;
+    Entry->Color = Color;
+    Entry->Sky = Sky;
+    Entry->Ground = Ground;
+    
+}
+
+internal void
+PushClear(render_group *Group, v4 Color)
 {
     render_entry_clear *Entry = PushRenderEntry(Group, render_entry_clear);
 
@@ -184,11 +266,12 @@ PushClear(render_group *Group, v3 Color)
 }
 
 internal void
-DrawRectangle(game_offscreen_bitmap *Bitmap, v2 TopLeft, v2 BottomRight, v3 Color)
+DrawRectangle(loaded_bitmap *Bitmap, v2 TopLeft, v2 BottomRight, v4 Color)
 {
     Assert(Color.r >= 0 && Color.r <= 1.0f);
     Assert(Color.g >= 0 && Color.g <= 1.0f);
     Assert(Color.b >= 0 && Color.b <= 1.0f);
+    Assert(Color.a >= 0 && Color.a <= 1.0f);
 
     TopLeft.x = (TopLeft.x < 0) ? 0 : TopLeft.x;
     TopLeft.y = (TopLeft.y < 0) ? 0 : TopLeft.y;
@@ -201,12 +284,13 @@ DrawRectangle(game_offscreen_bitmap *Bitmap, v2 TopLeft, v2 BottomRight, v3 Colo
     s32 MaxY = (s32)(BottomRight.y);
 
     u32 ColorBGR =
-        RoundR32ToU32(Color.b * 255.0f) << 0 |
-        RoundR32ToU32(Color.g * 255.0f) << 8 |
-        RoundR32ToU32(Color.r * 255.0f) << 16;
+        RoundR32ToU32(Color.b * 255.0f) << 0  |
+        RoundR32ToU32(Color.g * 255.0f) << 8  |
+        RoundR32ToU32(Color.r * 255.0f) << 16 |
+        RoundR32ToU32(Color.a * 255.0f) << 24;
     
     
-    u32 *Row = (u32 *)Bitmap->Memory + Bitmap->Width*MinY + MinX;
+    u32 *Row = (u32 *)Bitmap->Bytes + Bitmap->Width*MinY + MinX;
     for (s32 y = MinY; y < MaxY; y++)
     {
         u32 *Pixel = Row;
@@ -220,10 +304,266 @@ DrawRectangle(game_offscreen_bitmap *Bitmap, v2 TopLeft, v2 BottomRight, v3 Colo
 }
 
 internal void
-DrawRectangle(game_offscreen_bitmap *Bitmap,
+DrawRectangleSlowly(loaded_bitmap *Destination, v2 Origin,
+                    v2 XAxis, v2 YAxis, v4 Color)
+{
+    Assert(Color.r >= 0 && Color.r <= 1.0f);
+    Assert(Color.g >= 0 && Color.g <= 1.0f);
+    Assert(Color.b >= 0 && Color.b <= 1.0f);
+
+    u32 ColorBGRA =
+        RoundR32ToU32(Color.b * 255.0f) << 0  |
+        RoundR32ToU32(Color.g * 255.0f) << 8  |
+        RoundR32ToU32(Color.r * 255.0f) << 16 |
+        RoundR32ToU32(Color.a * 255.0f) << 24;
+
+    
+
+    v2 P[4];
+    P[0] = Origin;
+    P[1] = Origin + XAxis;
+    P[2] = Origin + XAxis + YAxis;
+    P[3] = Origin + YAxis;
+
+    s32 MinX = Destination->Width;
+    s32 MaxX = 0;
+    s32 MinY = Destination->Height;
+    s32 MaxY = 0;
+    
+    for (u32 i = 0 ; i < ArrayCount(P); ++i)
+    {
+        MinX = Minimum(MinX, Floor(P[i].x));
+        MinY = Minimum(MinY, Floor(P[i].y));
+
+        MaxX = Maximum(MaxX, Ceill(P[i].x));
+        MaxY = Maximum(MaxY, Ceill(P[i].y));
+        
+    }
+
+    MinX = Maximum(0, MinX);
+    MinY = Maximum(0, MinY);
+    MaxX = Minimum((s32)Destination->Width - 1, MaxX);
+    MaxY = Minimum((s32)Destination->Height - 1, MaxY);
+    
+    for (s32 y = MinY; y <= MaxY; ++y)
+    {
+        for (s32 x = MinX; x <= MaxX; ++x)
+        {
+            u32 *Pixel = (u32 *)Destination->Bytes + y * Destination->Width + x;
+            
+            v2 PixelP = V2(x, y);
+            v2 d = PixelP - Origin;
+
+            r32 Edge0 = d * -XAxis;
+            r32 Edge1 = d * -YAxis;
+            r32 Edge2 = (d - XAxis) * XAxis;
+            r32 Edge3 = (d - YAxis) * YAxis;
+
+
+            if ((Edge0 < 0) &&
+                (Edge1 < 0) &&
+                (Edge2 < 0) &&
+                (Edge3 < 0))
+            {
+                *Pixel = ColorBGRA;    
+            }
+        } 
+    }
+        
+}
+
+internal void
+DrawTextureSlowly(loaded_bitmap *Destination, v2 Origin,
+                  v2 XAxis, v2 YAxis, loaded_bitmap *Texture,
+                  loaded_bitmap *NormalMap, v4 Color,
+                  enviroment_map *Sky, enviroment_map *Ground)
+{
+
+    
+    v2 P[4];
+    P[0] = Origin;
+    P[1] = Origin + XAxis;
+    P[2] = Origin + XAxis + YAxis;
+    P[3] = Origin + YAxis;
+
+    s32 MinX = Destination->Width;
+    s32 MaxX = 0;
+    s32 MinY = Destination->Height;
+    s32 MaxY = 0;
+    
+    for (u32 i = 0 ; i < ArrayCount(P); ++i)
+    {
+        MinX = Minimum(MinX, Floor(P[i].x));
+        MinY = Minimum(MinY, Floor(P[i].y));
+
+        MaxX = Maximum(MaxX, Ceill(P[i].x));
+        MaxY = Maximum(MaxY, Ceill(P[i].y));
+        
+    }
+
+    MinX = Maximum(0, MinX);
+    MinY = Maximum(0, MinY);
+    MaxX = Minimum((s32)Destination->Width - 1, MaxX);
+    MaxY = Minimum((s32)Destination->Height - 1, MaxY);
+
+    r32 InvXAxisLenSq = 1.0f / LengthSquared(XAxis);
+    r32 InvYAxisLenSq = 1.0f / LengthSquared(YAxis);
+    u32 TexWidth = Texture->Width;
+    u32 TexHeight = Texture->Height;
+    for (s32 y = MinY; y <= MaxY+100; ++y)
+    {
+        for (s32 x = MinX; x <= MaxX+100; ++x)
+        {
+            u32 *PixelPtr = (u32 *)Destination->Bytes + y * Destination->Width + x;
+            
+            v2 PixelP = V2(x, y);
+            v2 d = PixelP - Origin;
+
+            r32 Edge0 = d * -XAxis;
+            r32 Edge1 = d * -YAxis;
+            r32 Edge2 = (d - XAxis) * XAxis;
+            r32 Edge3 = (d - YAxis) * YAxis;
+
+            if (Edge0 <= 0 &&
+                Edge1 <= 0 &&
+                Edge2 <= 0 &&
+                Edge3 <= 0)
+            {
+
+                d -= YAxis;
+                r32 U = (d * XAxis) * InvXAxisLenSq;
+                r32 V = (d * -YAxis) * InvYAxisLenSq;
+                
+                //Assert((U >= 0.0f) && (U <= 1.0f));
+                //Assert((V >= 0.0f) && (V <= 1.0f));
+                
+                r32 TexX = U * (r32)(TexWidth - 2);
+                r32 TexY = V * (r32)(TexHeight - 2);
+
+                u32 X = (u32)TexX;
+                u32 Y = (u32)TexY;
+
+                r32 fX = TexX - (r32)X;
+                r32 fY = TexY - (r32)Y;
+                
+                u32 *TexelPtr = (u32 *)Texture->Bytes + Y * TexWidth + X;
+
+                u32 *TexelAPtr = TexelPtr;
+                u32 *TexelBPtr = TexelPtr + 1;
+                u32 *TexelCPtr = TexelPtr + TexWidth;
+                u32 *TexelDPtr = TexelPtr + TexWidth + 1;
+
+                v4 TexelA = UnpackBGRA(TexelAPtr);
+                v4 TexelB = UnpackBGRA(TexelBPtr);
+                v4 TexelC = UnpackBGRA(TexelCPtr);
+                v4 TexelD = UnpackBGRA(TexelDPtr);
+                
+                TexelA = SRGBA255ToLinear1(TexelA);
+                TexelB = SRGBA255ToLinear1(TexelB);
+                TexelC = SRGBA255ToLinear1(TexelC);
+                TexelD = SRGBA255ToLinear1(TexelD);
+
+                v4 Texel = Lerp(Lerp(TexelA, fX, TexelB), fY,
+                                Lerp(TexelC, fX, TexelD));
+     
+#if 1
+
+                {
+                    TexWidth = NormalMap->Width;
+                    u32 *NormalPtr = (u32 *)NormalMap->Bytes + Y * TexWidth + X;
+
+                    u32 *NormalAPtr = NormalPtr;
+                    u32 *NormalBPtr = NormalPtr + 1;
+                    u32 *NormalCPtr = NormalPtr + TexWidth;
+                    u32 *NormalDPtr = NormalPtr + TexWidth + 1;
+
+                    v4 NormalA = UnpackBGRA(NormalAPtr);
+                    v4 NormalB = UnpackBGRA(NormalBPtr);
+                    v4 NormalC = UnpackBGRA(NormalCPtr);
+                    v4 NormalD = UnpackBGRA(NormalDPtr);
+                
+                    NormalA = SRGBA255ToLinear1(NormalA);
+                    NormalB = SRGBA255ToLinear1(NormalB);
+                    NormalC = SRGBA255ToLinear1(NormalC);
+                    NormalD = SRGBA255ToLinear1(NormalD);
+
+                    v4 Normal = Lerp(Lerp(NormalA, fX, NormalB), fY,
+                                     Lerp(NormalC, fX, NormalD));
+
+                    //TODO Scale? Shift? -1..1?
+     
+                    v4 Light = SampleEnviromentMap(Sky, V3(0,0,0));
+                
+                    //Texel.rgb = Texel.rgb +
+                    //  Texel.a* Lerp(Texel.rgb, 0.2f , Light.rgb);
+                    //Texel.rgb = Clamp01(Texel.rgb);
+                }
+#endif
+                Texel = Hadamard(Texel, Color);
+
+                v4 Pixel = UnpackBGRA(PixelPtr);
+                Pixel = SRGBA255ToLinear1(Pixel);
+                
+                r32 InvA = 1.0f - Texel.a;
+                v4 Blended = InvA * Pixel + Texel;
+                Blended = Linear1ToSRGBA255(Blended);
+                
+                *PixelPtr = PackBGRA(Blended);
+            }
+        } 
+    }
+        
+}
+
+internal void
+MakeSphereNormalMap(loaded_bitmap *Bitmap)
+{
+    u32 Width = Bitmap->Width;
+    u32 Height = Bitmap->Height;
+    
+    for (u32 y = 0; y < Height; ++y)
+    {
+        for (u32 x = 0; x < Width; ++x)
+        {
+            u32 *Pixel = (u32 *)Bitmap->Bytes + y * Width + x;
+            //Normalize
+            r32 u = (r32)x / (Width - 1);
+            r32 v = (r32)y / (Height - 1);
+
+            //Scale to -1..1
+            u = 2.0f * u - 1.0f;
+            v = 2.0f * v - 1.0f;
+            //Sphere equation is x^2 + y^2 + z^2 = 1
+            r32 z = 1 - u*u - v*v;
+            if (z >= 0.0f)
+            {
+                r32 w = SquareRoot(z);
+
+                //Scale to 0..1
+                u = (u + 1.0f) / 2.0f;
+                v = (v + 1.0f) / 2.0f;
+                w = (w + 1.0f) / 2.0f;
+                
+                v4 Normal = {u, v, w, 1.0f};
+
+                //Convert to RGB space
+                Normal *= 255.0f;
+                
+                *Pixel = PackBGRA(Normal);
+            }
+            else
+            {
+                *Pixel = (u32) 0;
+            }
+        }
+    }
+}
+
+internal void
+DrawRectangle(loaded_bitmap *Bitmap,
               r32 TopLeftX, r32 TopLeftY,
               r32 BottomRightX, r32 BottomRightY,
-              v3 Color)
+              v4 Color)
 {
     v2 TopLeft = {TopLeftX, TopLeftY};
     v2 BottomRight = {BottomRightX, BottomRightY};
@@ -245,7 +585,7 @@ AllocateRenderGroup(memory_arena *Arena, game_state *GameState,
 }
 
 internal void
-RenderOutput(render_group *Group, game_offscreen_bitmap *Target,
+RenderOutput(render_group *Group, loaded_bitmap *Target,
              r32 PixelsPerMeter )
 {
     v2 ScreenCenter = 0.5f * V2(Target->Width, Target->Height);
@@ -262,8 +602,9 @@ RenderOutput(render_group *Group, game_offscreen_bitmap *Target,
                 Assert(Entry->Bitmap);
                 
                 v2 P = ScreenCenter + Entry->Offset;
+#if 0
                 DrawBitmap(Target, Entry->Bitmap, P.x, P.y, Entry->Alpha);
-
+#endif
                 Address += sizeof(*Entry);
             } break;
 
@@ -273,8 +614,9 @@ RenderOutput(render_group *Group, game_offscreen_bitmap *Target,
                 Assert(Entry->Source);
                 Assert(Entry->Destination);
                 
+#if 0 
                 CompositeBitmap(Entry->Destination, Entry->Source, Entry->P);
-
+#endif
                 Address += sizeof(*Entry);
             } break;
             
@@ -285,6 +627,28 @@ RenderOutput(render_group *Group, game_offscreen_bitmap *Target,
                 v2 HalfDim = 0.5f * Entry->Dim;
          
                 DrawRectangle(Target, P - HalfDim, P + HalfDim, Entry->Color);
+
+                Address += sizeof(*Entry);
+            } break;
+            
+            case(RenderGroupEntryType_render_entry_rect_slow):
+            {
+                render_entry_rect_slow *Entry = (render_entry_rect_slow *) Header;
+                v2 P = Entry->Origin;
+                
+                DrawRectangleSlowly(Target, P, Entry->XAxis, Entry->YAxis, Entry->Color);
+
+                Address += sizeof(*Entry);
+            } break;
+            
+            case(RenderGroupEntryType_render_entry_tex_slow):
+            {
+                render_entry_tex_slow *Entry = (render_entry_tex_slow *) Header;
+                v2 P = Entry->Origin;
+                
+                DrawTextureSlowly(Target, P, Entry->XAxis, Entry->YAxis,
+                                  Entry->Texture, Entry->NormalMap,
+                                  Entry->Color, Entry->Sky, Entry->Ground);
 
                 Address += sizeof(*Entry);
             } break;

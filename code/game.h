@@ -1,10 +1,10 @@
 #pragma once
 
 #include "platform.h"
+#include "intrinsic.h"
 #include "math.h"
 #include "random.h"
 #include "tile_map.h"
-#include "intrinsic.h"
 #include "sim_region.h"
 //#include "render_group.h"
 
@@ -33,6 +33,11 @@ struct loaded_bitmap
     v2 Align;
 };  
 
+struct enviroment_map
+{
+    loaded_bitmap* LOD[4];
+};
+
 struct ground_buffer
 {
     //NOTE This is the center of Bitmap
@@ -46,8 +51,10 @@ struct transient_state
     bool32 IsInitialized;
     memory_arena Arena;
     u32 GroundBufferCount;
-    ground_buffer *GroundBuffers;;
-    
+    ground_buffer *GroundBuffers;
+
+    enviroment_map Sky;
+    enviroment_map Ground;
 };
 
 struct loaded_file
@@ -155,6 +162,8 @@ struct game_state
     loaded_bitmap Rock[4];
     loaded_bitmap Tree[3];
     loaded_bitmap Tuft[3];
+
+    loaded_bitmap SphereNormal;
     
     memory_arena Arena;
     bool32 IsInitialized;

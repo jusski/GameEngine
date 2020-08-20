@@ -5,7 +5,9 @@ enum render_group_entry_type
     RenderGroupEntryType_render_entry_invalid,
     RenderGroupEntryType_render_entry_clear,
     RenderGroupEntryType_render_entry_rect,
+    RenderGroupEntryType_render_entry_rect_slow,
     RenderGroupEntryType_render_entry_bitmap,
+    RenderGroupEntryType_render_entry_tex_slow,
     RenderGroupEntryType_render_entry_composite,
     
 };
@@ -18,15 +20,39 @@ struct entry_header
 struct render_entry_clear
 {
     entry_header Header;
-    v3 Color;
+    v4 Color;
     
+};
+
+struct render_entry_rect_slow
+{
+    entry_header Header;
+    v2 Origin;
+    v2 XAxis;
+    v2 YAxis;
+    v4 Color;
+};
+
+struct render_entry_tex_slow
+{
+    entry_header Header;
+    v2 Origin;
+    v2 XAxis;
+    v2 YAxis;
+    v4 Color;
+    
+    loaded_bitmap *Texture;
+    loaded_bitmap *NormalMap;
+
+    enviroment_map *Sky;
+    enviroment_map *Ground;
 };
 
 struct render_entry_rect
 {
     entry_header Header;
     v2 Offset;
-    v3 Color;
+    v4 Color;
     v2 Dim;
 };
 
@@ -64,3 +90,7 @@ struct render_group
     u8 *PushBufferBasis;
 };
 
+struct bilinear_sample
+{
+    v4 A, B, C, D;  
+};
