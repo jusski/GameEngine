@@ -69,10 +69,9 @@ GetTile(tile_map *TileMap, u32 X, u32 Y, memory_arena *Arena = 0)
         Tile = PushStruct(Arena, tile);
         Tile->X = X;
         Tile->Y = Y;
+        //TODO First in link or last?
+        Tile->NextInHash = TileMap->ChunkHashMap[HashSlot];
 
-        Tile->NextInHash = 0;
-
-        
         TileMap->ChunkHashMap[HashSlot] = Tile;
     }
     return Tile;    

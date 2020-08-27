@@ -42,10 +42,12 @@ struct render_entry_tex_slow
     v4 Color;
     
     loaded_bitmap *Texture;
-    loaded_bitmap *NormalMap;
+    normal_map *NormalMap;
 
     enviroment_map *Sky;
     enviroment_map *Ground;
+
+    v2 ScreenPosition;
 };
 
 struct render_entry_rect

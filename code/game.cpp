@@ -141,6 +141,20 @@ MakeEmptyBitmap(memory_arena *Arena, u32 Width, u32 Height, bool32 ClearToZero =
     return(Result);
 }
 
+internal normal_map *
+MakeEmptyNormalMap(memory_arena *Arena, u32 Width, u32 Height)
+{
+    normal_map *Result = PushStruct(Arena, normal_map);
+    
+    Result->Width = Width;
+    Result->Height = Height;
+    
+    u32 TotalSize = Width * Height;
+    Result->Bytes = PushArray(Arena, TotalSize, v4);
+    
+    return(Result);
+}
+
 internal entity *
 AddEntity(game_state *GameState, entity_type Type, tile_map_position P)
 {
@@ -584,49 +598,62 @@ InitializeTranState(transient_state *TranState, game_state *GameState,
         GroundBuffer->P = NullPosition();
     }
     
-    loaded_bitmap *Template = MakeEmptyBitmap(&GameState->Arena, 100, 100);
+    normal_map *Template = MakeEmptyNormalMap(&GameState->Arena, 100, 100);
     GameState->SphereNormal = *Template;
     MakeSphereNormalMap(&GameState->SphereNormal);
 
-    loaded_bitmap *Sky = MakeEmptyBitmap(&TranState->Arena, 100, 100);
-    u32 Height = Sky->Height / 3;
-    u32 Width = Sky->Width / 3;
+    Template = MakeEmptyNormalMap(&GameState->Arena, 100, 100);
+    GameState->TestNormal = *Template;
+    MakeTestNormalMap(&GameState->TestNormal);
+
+    loaded_bitmap *Sky = MakeEmptyBitmap(&TranState->Arena, 200, 200);
+    u32 Height = Sky->Height / 21;
+    u32 Width = Sky->Width / 21;
     bool32 SwapColor = false;
-    v4 SkyColor = V4(0.52f, 0.82f, 0.92f, 1.0f);
-    v4 DarkColor = V4(0,0,0,1);
-    for (u32 j = 0; j < Height; ++j)
+    v4 SkyColor = V4(0.5f,0.0f,0.0f,1.0f);
+    //v4 SkyColor = V4(0.52f, 0.82f, 0.92f, 1.0f);
+    v4 DarkColor = V4(0.0f,0.99f,0.0f,1.0f);
+    
+    for (u32 j = 0; j < Sky->Height / Height; ++j)
     {
-        for (u32 i = 0; i < Width; ++i)
+        for (u32 i = 0; i < Sky->Width / Width; ++i)
         {
             v2 Offset = V2(i * Width, j * Height);
             v4 Color = SwapColor ? SkyColor : DarkColor;
-            DrawRectangle(Sky, Offset, V2(Sky->Width, Sky->Height),
+            DrawRectangle(Sky, Offset, Offset + V2(Width, Height),
                           Color);
             SwapColor = !SwapColor;
                 
         }
+        SwapColor = !SwapColor;
+        
     }
-
+    
     loaded_bitmap *Ground = MakeEmptyBitmap(&TranState->Arena, 100, 100);
-    Height = Ground->Height / 3;
-    Width = Ground->Width / 3;
+    Height = Ground->Height / 11;
+    Width = Ground->Width / 11;
     SwapColor = false;
     v4 GroundColor = V4(0.486f, 0.988f, 0.0f, 1.0f);
-    DarkColor = V4(0,0,0,1);
+    DarkColor = V4(0,1,0,1);
     for (u32 j = 0; j < Height; ++j)
     {
         for (u32 i = 0; i < Width; ++i)
         {
             v2 Offset = V2(i * Width, j * Height);
             v4 Color = SwapColor ? GroundColor : DarkColor;
-            DrawRectangle(Ground, Offset, V2(Ground->Width, Ground->Height),
+            DrawRectangle(Ground, Offset, Offset + V2(Width, Height),
                           Color);
             SwapColor = !SwapColor;
                 
         }
     }
 
+    loaded_bitmap *Reflection = MakeEmptyBitmap(&GameState->Arena, 100, 100);
+    GameState->Reflection = *Reflection;
+    v4 Color = 0.5f * V4(1.0f, 1.0f, 1.0f, 1.0f);
+    DrawRectangle(Reflection, V2(0,0), V2(Reflection->Width, Reflection->Height), Color);    
     
+    //TranState->Sky.LOD[0] = &GameState->Tree[0];
     TranState->Sky.LOD[0] = Sky;
     TranState->Ground.LOD[0] = Ground;
     
@@ -758,7 +785,7 @@ GameEngine(game_memory *Memory, game_input *Input,
                 }
         
                 v4 Color = {0.7f, 0.7f, 0.7f, 1.0f};
-                PushRect(RenderGroup, Entity->P, v2{Entity->Width, Entity->Height}, Color);
+                //PushRect(RenderGroup, Entity->P, v2{Entity->Width, Entity->Height}, Color);
                 PushBitmap(RenderGroup, &HeroBitmaps->Body, Entity->P);
             } break;
 
@@ -786,24 +813,41 @@ GameEngine(game_memory *Memory, game_input *Input,
 
     local_persist r32 Angle = 0;
     Angle+= Input->dtForFrame;
-    v2 XAxis = 100.0f * V2(1.0f, 0.0f);
+    v2 XAxis = 300.0f * V2(1.0f, 0.0f);
     v2 YAxis = Perp(XAxis);
     v4 Color = {1.0f, 1.0f, 1.0f, 1.0f};
     v2 Origin = ScreenCenter - 0.5f*XAxis - 0.5f*YAxis; // 100 * Cos(Angle)*V2(1,0) + ScreenCenter;
 
-    loaded_bitmap *NormalMap = &GameState->SphereNormal;
-    PushTextureSlow(RenderGroup, Origin, XAxis, YAxis,
-                    &GameState->Tree[1], NormalMap, Color,
-                    &TranState->Sky, &TranState->Ground );
+    v2 ScreenPosition = V2(10.f*Cos(Angle), 0.f);
+#if 1
     
-                
+    MakeTestNormalMap(&GameState->TestNormal, 65.f + (25.f * (Cos(Angle) + 1.0f)/2.f));
+    //MakeTestNormalMap(&GameState->TestNormal, 90.f);
+
+#endif
+    normal_map *NormalMap = &GameState->SphereNormal;
+#if 1
+    PushTextureSlow(RenderGroup, Origin, XAxis, YAxis,
+                    &GameState->Reflection, NormalMap, Color,
+                    &TranState->Sky, &TranState->Ground,
+                    ScreenPosition);
+#endif
+#if 0
+    NormalMap = &GameState->PyramidNormal;
+    PushTextureSlow(RenderGroup, Origin + V2(110, 0), XAxis, YAxis,
+                    &GameState->Reflection, NormalMap, Color,
+                    &TranState->Sky, &TranState->Ground,
+                    ScreenPosition);
+    
+#endif
     RenderOutput(RenderGroup, Video, GameState->PixelsPerMeter);
 
     DrawTilesOutline(Video, GameState, GameState->CameraPosition);
 
-    DrawBitmap(Video, &GameState->SphereNormal, ScreenCenter.x, ScreenCenter.y);
-    DrawBitmap(Video, TranState->Sky.LOD[0], 0, 0);
-    DrawBitmap(Video, TranState->Ground.LOD[0], 0, 110);
+    //DrawBitmap(Video, &GameState->SphereNormal, ScreenCenter.x - 60, ScreenCenter.y + 60);
+    //DrawBitmap(Video, &GameState->PyramidNormal, ScreenCenter.x + 60, ScreenCenter.y + 60);
+    //DrawBitmap(Video, TranState->Sky.LOD[0], 0, 0);
+    //DrawBitmap(Video, TranState->Ground.LOD[0], 0, 110);
     //DrawGroundBuffers(Video, GameState, TranState, GameState->CameraPosition);
 
 

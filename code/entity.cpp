@@ -17,3 +17,4 @@ ClearFlag(sim_entity *Entity, u32 Flag)
 {
     Entity->Flags &= ~Flag;
 }
+

@@ -22,6 +22,13 @@ struct temporary_memory
     s32 Counter;
 };
 
+struct normal_map
+{
+    u32 Width;
+    u32 Height;
+    v4 *Bytes;
+};
+
 struct loaded_bitmap
 {
     u32 Width;
@@ -163,7 +170,11 @@ struct game_state
     loaded_bitmap Tree[3];
     loaded_bitmap Tuft[3];
 
-    loaded_bitmap SphereNormal;
+    normal_map SphereNormal;
+    normal_map PyramidNormal;
+    normal_map TestNormal;
+
+    loaded_bitmap Reflection;
     
     memory_arena Arena;
     bool32 IsInitialized;

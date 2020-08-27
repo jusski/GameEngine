@@ -313,6 +313,17 @@ operator+(v3 a, v3 b)
 }
 
 inline v3
+operator-(v3 a, v3 b)
+{
+    v3 Result;
+    Result.x = a.x - b.x;
+    Result.y = a.y - b.y;
+    Result.z = a.z - b.z;
+
+    return(Result);
+}
+
+inline v3
 operator*(r32 c, v3 a)
 {
     v3 Result;
@@ -362,6 +373,18 @@ operator+(v4 a, v4 b)
     Result.y = a.y + b.y;
     Result.z = a.z + b.z;
     Result.w = a.w + b.w;
+
+    return(Result);
+}
+
+inline v4
+operator-(v4 a, v4 b)
+{
+    v4 Result;
+    Result.x = a.x - b.x;
+    Result.y = a.y - b.y;
+    Result.z = a.z - b.z;
+    Result.w = a.w - b.w;
 
     return(Result);
 }

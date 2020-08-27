@@ -1,6 +1,18 @@
 #pragma once
 
 inline r32
+SafeRatio0(r32 A, r32 B)
+{
+    r32 Result = A / B;
+    
+    if (B == 0.0f)
+    {
+        Result = 0;
+    }
+    return(Result);
+}
+
+inline r32
 Inner(v2 A, v2 B)
 {
     r32 Result = A.x * B.x + A.y * B.y;
@@ -162,8 +174,17 @@ PackBGRA(v4 Color)
 inline v2
 Normalize(v2 A)
 {
-    r32 InvLength = 1.0f / Length(A);
+    r32 InvLength = SafeRatio0(1.0f, Length(A));
     v2 Result = InvLength * A;
+
+    return(Result);
+}
+
+inline v3
+Normalize(v3 A)
+{
+    r32 InvLength = 1.0f / Length(A);
+    v3 Result = InvLength * A;
 
     return(Result);
 }

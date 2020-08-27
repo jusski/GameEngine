@@ -333,8 +333,15 @@ Win32ResizeBitmap(win32_offscreen_bitmap *Bitmap, int32 Width, int32 Height)
         VirtualFree(Bitmap->Memory, 0, MEM_RELEASE);
     }
     SIZE_T BitmapMemorySize = (SIZE_T)(Bitmap->BytesPerPixel * Bitmap->Width * Bitmap->Height);
+    if (BitmapMemorySize == 0)
+    {
+        BitmapMemorySize = BITMAP_BYTES_PER_PIXEL * 100 * 100;
+    }
     Bitmap->Memory = VirtualAlloc(0, BitmapMemorySize,
                                   MEM_COMMIT|MEM_RESERVE, PAGE_READWRITE);
+
+    Assert(Bitmap->Memory);
+    
 }
 
 internal void
@@ -714,13 +721,13 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
     RegisterClassA(&WindowClass);
 
     HWND Window = CreateWindowExA(
-        //WS_EX_TOPMOST | WS_EX_LAYERED,
-        0,
+        WS_EX_TOPMOST | WS_EX_LAYERED,
+        //0,
         WindowClass.lpszClassName,
         "Learning C Hello World",
         WS_OVERLAPPEDWINDOW,
-        700, 200,
-        512, 512,
+        750, 370,
+        400, 400,
         0, 0,
         Instance,
         0);
