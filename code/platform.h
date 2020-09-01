@@ -131,6 +131,17 @@ union v4
         v3 xyz;
         r32 _Ignore1;
     };
+    struct
+    {
+        v2 xy;
+        v2 _Ignore2;
+    };
+    struct
+    {
+        r32 _Ignore3;
+        v2 yz;
+        r32 _Ignore4;
+    };
 };
 
 

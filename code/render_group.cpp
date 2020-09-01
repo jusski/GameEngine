@@ -38,14 +38,14 @@ SampleEnviromentMap(enviroment_map *Map, v4 Normal, v2 ScreenPosition,
 {
     //ScreenPosition = V2(0.5f, -0.5f);
     loaded_bitmap *Texture = Map->LOD[0];
-
-//    Normal.xyz = Normalize(Normal.xyz);
+    
+    Normal.xyz = Normalize(Normal.xyz);
     // Reflection vector = -e - 2 * (e,N) * N  
     v3 Reflection = V3(0,0,-1) + 2.0f * Normal.z * Normal.xyz;
     
 
     
-    r32 Distance = 0.f + 1.0f - Normal.w;
+    r32 Distance = 100.f + 1.0f - Normal.w;
     r32 Ratio = SafeRatio0(Distance, Reflection.z);
     if (Reflection.z < 0.0f)
     {
@@ -55,8 +55,8 @@ SampleEnviromentMap(enviroment_map *Map, v4 Normal, v2 ScreenPosition,
     r32 s = Ratio * Reflection.x;
     r32 t = Ratio * Reflection.y;
     
-    r32 X = (ScreenPosition.x + s) * (Texture->Width);
-    r32 Y = (ScreenPosition.y + t) * (Texture->Height);
+    r32 X = ScreenPosition.x + s;// * (Texture->Width);
+    r32 Y = ScreenPosition.y + t;// * (Texture->Height);
     if ((X > (r32)Texture->Width - 2.0f) ||
         (Y > (r32)Texture->Height - 2.0f) ||
         (X < 0.0f) || (Y < 0.0f))
@@ -503,8 +503,6 @@ DrawTextureSlowly(loaded_bitmap *Destination, v2 Origin,
                 v4 Texel = Lerp(Lerp(TexelA, fX, TexelB), fY,
                                 Lerp(TexelC, fX, TexelD));
      
-
-
                 v4 *NormalPtr = (v4 *)NormalMap->Bytes + Y * NormalMap->Width + X;
 
                 v4 *NormalAPtr = NormalPtr;
@@ -519,17 +517,25 @@ DrawTextureSlowly(loaded_bitmap *Destination, v2 Origin,
 
                 v4 Normal = Lerp(Lerp(NormalA, fX, NormalB), fY,
                                  Lerp(NormalC, fX, NormalD));
-                    
 
+                v2 NXAxis = 1.f/Length(XAxis) * XAxis;
+                v2 NYAxis = 1.f/Length(YAxis) * YAxis;
+                
+                Normal.xy =  Normal.x*(NXAxis) - Normal.y*(NYAxis);
+                
+                
+                r32 Nx = (r32)x / NormalMap->Width;
+                r32 Ny = (r32)y / NormalMap->Height;
+                r32 NX = (r32)x / Destination->Width;
+                r32 NY = (r32)y / Destination->Height;
+                
                 v4 Light = SampleEnviromentMap(Sky, Normal,
-                                               ScreenPosition + 1.f*V2(U,V),
-                                                   V4(1,1,1,1));
-#if 1                
-                    Texel.rgb = Texel.rgb +
-                      Texel.a* Lerp(Texel.rgb, Normal.z , Light.rgb);
-#else
-                    Texel.rgb = Light.rgb;
-#endif
+                                               ScreenPosition + 1.f*V2(x,y),
+                                               V4(1,1,1,1));
+
+                Texel.rgb = Texel.rgb +
+                    Texel.a* Lerp(Texel.rgb, Normal.w, Light.rgb);
+
                 Texel = Hadamard(Texel, Color);
 
                 v4 Pixel = UnpackBGRA(PixelPtr);
@@ -585,54 +591,6 @@ MakeSphereNormalMap(normal_map *Map)
 }
 
 internal void
-MakeSphereNormalMap(loaded_bitmap *Bitmap)
-{
-    u32 Width = Bitmap->Width;
-    u32 Height = Bitmap->Height;
-    
-    for (u32 y = 0; y < Height; ++y)
-    {
-        for (u32 x = 0; x < Width; ++x)
-        {
-            u32 *Pixel = (u32 *)Bitmap->Bytes + y * Width + x;
-            //Normalize
-            r32 u = (r32)x / (Width - 1);
-            r32 v = (r32)y / (Height - 1);
-
-            //Scale to -1..1
-            u = 2.0f * u - 1.0f;
-            v = 2.0f * v - 1.0f;
-            
-            //Sphere equation is x^2 + y^2 + z^2 = 1
-            r32 z = 1 - u*u - v*v;
-            if (z >= 0.0f)
-            {
-                r32 w = SquareRoot(z);
-
-                //Scale to 0..1
-                u = (u + 1.0f) / 2.0f;
-                v = (v + 1.0f) / 2.0f;
-                w = (w + 1.0f) / 2.0f;
-
-                v4 Normal = {u, v, w, w};
-
-                //Convert to RGB space
-                Normal *= 255.0f;
-                
-                *Pixel = PackBGRA(Normal);
-            }
-            else
-            {
-                v4 DefaultNormal = 255.0f *V4(0.0f, 0.0f, 1.0f, 0.0f);
-                *Pixel = PackBGRA(DefaultNormal);
-            }
-            //v4 V = 255.0f *V4(0.0f, 0.0f, 1.0f, 0.0f);
-            //*Pixel = PackBGRA(V);
-        }
-    }
-}
-
-internal void
 MakeTestNormalMap(normal_map *Map, r32 AngleDegrees = 90.f)
 {
     u32 Width = Map->Width;
@@ -646,13 +604,23 @@ MakeTestNormalMap(normal_map *Map, r32 AngleDegrees = 90.f)
             
             r32 AngleRadiance = AngleDegrees * (3.14f / 180.f);
 
-            r32 x = Cos(AngleRadiance);
+            r32 x = (r32)X / (Width - 1);
             r32 y = 0.f;
-            r32 z = Sin(AngleRadiance);
-            r32 w = -(r32)X / (Width - 1);
+            r32 z = x * Tan(AngleRadiance);
+            r32 w = z;
+
+            if (x*x + z*z > 1.0f)
+            {
+                *Normal = V4(0,0,0,0);
+            }
+            else
+            {
+                v4 n = V4(-z, 0.f, x, w);
+                n.xyz = Normalize(n.xyz);
+                *Normal = n;                
+            }
             
             
-            *Normal = V4(x, y, z, w);            
         }
     }
 }

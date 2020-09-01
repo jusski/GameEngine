@@ -183,7 +183,7 @@ Normalize(v2 A)
 inline v3
 Normalize(v3 A)
 {
-    r32 InvLength = 1.0f / Length(A);
+    r32 InvLength = SafeRatio0(1.0f, Length(A));
     v3 Result = InvLength * A;
 
     return(Result);
@@ -192,7 +192,7 @@ Normalize(v3 A)
 inline v4
 Normalize(v4 A)
 {
-    r32 InvLength = 1.0f / Length(A);
+    r32 InvLength = SafeRatio0(1.0f, Length(A));
     v4 Result = InvLength * A;
 
     return(Result);

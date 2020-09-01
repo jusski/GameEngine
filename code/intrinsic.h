@@ -116,6 +116,14 @@ Sin(r32 A)
 }
 
 inline r32
+Tan(r32 A)
+{
+    r32 Result = (r32)tan(A);
+
+    return(Result);
+}
+
+inline r32
 Cos(r32 A)
 {
     r32 Result = (r32)cos(A);

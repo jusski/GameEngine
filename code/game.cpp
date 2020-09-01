@@ -813,18 +813,30 @@ GameEngine(game_memory *Memory, game_input *Input,
 
     local_persist r32 Angle = 0;
     Angle+= Input->dtForFrame;
-    v2 XAxis = 300.0f * V2(1.0f, 0.0f);
+
+#if 1 // Rotation
+    v2 XAxis = 300.0f * V2(Cos(0.5f*Angle), Sin(0.5f*Angle));
+#else
+    v2 XAxis = 300.0f * V2(1.f, 0.f);
+#endif
+    
     v2 YAxis = Perp(XAxis);
     v4 Color = {1.0f, 1.0f, 1.0f, 1.0f};
     v2 Origin = ScreenCenter - 0.5f*XAxis - 0.5f*YAxis; // 100 * Cos(Angle)*V2(1,0) + ScreenCenter;
+   
 
-    v2 ScreenPosition = V2(10.f*Cos(Angle), 0.f);
-#if 1
-    
-    MakeTestNormalMap(&GameState->TestNormal, 65.f + (25.f * (Cos(Angle) + 1.0f)/2.f));
-    //MakeTestNormalMap(&GameState->TestNormal, 90.f);
-
+#if 0 // Offset
+    v2 ScreenPosition = V2(400.f*Cos(Angle), 0.f);
+#else
+    v2 ScreenPosition = V2(0.f, 0.f);
 #endif
+
+#if 0 // Angle
+    MakeTestNormalMap(&GameState->TestNormal, (40.f * (Cos(Angle) + 1.0f)/2.f));
+#else
+    MakeTestNormalMap(&GameState->TestNormal, 0.f);
+#endif
+    
     normal_map *NormalMap = &GameState->SphereNormal;
 #if 1
     PushTextureSlow(RenderGroup, Origin, XAxis, YAxis,
