@@ -11,5 +11,5 @@ SET IMPORTS=user32.lib gdi32.lib dsound.lib winmm.lib opengl32.lib
 
 del *.pdb
 cl %CFLAGS% /LD ..\code\game.cpp  /link %LFLAGS% /INCREMENTAL:NO /EXPORT:GameEngine
-cl %CFLAGS% ..\code\win32_main.cpp  /link /DEBUG /INCREMENTAL:NO %IMPORTS%
+REM cl %CFLAGS% ..\code\win32_main.cpp  /link /DEBUG /INCREMENTAL:NO %IMPORTS%
 popd

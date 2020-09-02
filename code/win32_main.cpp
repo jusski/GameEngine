@@ -323,7 +323,7 @@ Win32ResizeBitmap(win32_offscreen_bitmap *Bitmap, int32 Width, int32 Height)
 
     BitmapInfoHeader->biSize = sizeof(*BitmapInfoHeader);
     BitmapInfoHeader->biWidth = Bitmap->Width;
-    BitmapInfoHeader->biHeight = -((int64)Bitmap->Height);
+    BitmapInfoHeader->biHeight = ((int64)Bitmap->Height);
     BitmapInfoHeader->biPlanes = 1;
     BitmapInfoHeader->biBitCount = (WORD)(Bitmap->BytesPerPixel * 8);
     BitmapInfoHeader->biCompression = BI_RGB;

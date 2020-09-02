@@ -377,7 +377,7 @@ DrawTilesOutline(loaded_bitmap *Bitmap, game_state *GameState, tile_map_position
 }
 
 internal void
-DrawGroundBuffers(game_offscreen_bitmap *Bitmap, game_state *GameState,
+DrawGroundBuffers(loaded_bitmap *Bitmap, game_state *GameState,
                   transient_state *TranState, tile_map_position Origin)
 {
     
@@ -798,7 +798,8 @@ GameEngine(game_memory *Memory, game_input *Input,
             case EntityType_Tree:
             {
                 v3 Color = {0.2f, 0.7f, 0.7f};
-                PushBitmap(RenderGroup, &GameState->Tree[0], Entity->P);                //PushRect(RenderGroup, Entity->P, v2{Entity->Width, Entity->Height}, Color);
+                PushBitmap(RenderGroup, &GameState->Tree[0], Entity->P);
+                //PushRect(RenderGroup, Entity->P, v2{Entity->Width, Entity->Height}, Color);
             } break;
             
             InvalidDefaultCase;
@@ -815,15 +816,18 @@ GameEngine(game_memory *Memory, game_input *Input,
     Angle+= Input->dtForFrame;
 
 #if 1 // Rotation
-    v2 XAxis = 300.0f * V2(Cos(0.5f*Angle), Sin(0.5f*Angle));
+    v2 XAxis = 100.0f * V2(Cos(0.5f*Angle), Sin(0.5f*Angle));
 #else
     v2 XAxis = 300.0f * V2(1.f, 0.f);
 #endif
     
     v2 YAxis = Perp(XAxis);
     v4 Color = {1.0f, 1.0f, 1.0f, 1.0f};
-    v2 Origin = ScreenCenter - 0.5f*XAxis - 0.5f*YAxis; // 100 * Cos(Angle)*V2(1,0) + ScreenCenter;
-   
+#if 1
+    v2 Origin = ScreenCenter - 0.5f*XAxis - 0.5f*YAxis;
+#else
+    v2 Origin = ScreenCenter - Sin(Angle)*XAxis - 0.5f*YAxis;
+#endif
 
 #if 0 // Offset
     v2 ScreenPosition = V2(400.f*Cos(Angle), 0.f);
@@ -846,27 +850,27 @@ GameEngine(game_memory *Memory, game_input *Input,
 #endif
 #if 0
     NormalMap = &GameState->PyramidNormal;
-    PushTextureSlow(RenderGroup, Origin + V2(110, 0), XAxis, YAxis,
-                    &GameState->Reflection, NormalMap, Color,
+    PushTextureSlow(RenderGroup, V2(0, 0), 0.3f*XAxis, 0.3f*YAxis,
+                    TranState->Sky.LOD[0], 0, Color,
                     &TranState->Sky, &TranState->Ground,
                     ScreenPosition);
     
 #endif
     RenderOutput(RenderGroup, Video, GameState->PixelsPerMeter);
 
-    DrawTilesOutline(Video, GameState, GameState->CameraPosition);
+    //DrawTilesOutline(Video, GameState, GameState->CameraPosition);
 
     //DrawBitmap(Video, &GameState->SphereNormal, ScreenCenter.x - 60, ScreenCenter.y + 60);
     //DrawBitmap(Video, &GameState->PyramidNormal, ScreenCenter.x + 60, ScreenCenter.y + 60);
     //DrawBitmap(Video, TranState->Sky.LOD[0], 0, 0);
     //DrawBitmap(Video, TranState->Ground.LOD[0], 0, 110);
-    //DrawGroundBuffers(Video, GameState, TranState, GameState->CameraPosition);
+    DrawGroundBuffers(Video, GameState, TranState, GameState->CameraPosition);
 
 
     EndSim(SimRegion, GameState);
     EndTemporaryMemory(&SimMemory);
     EndTemporaryMemory(&RenderMemory);
-    
+            
 }
 
 

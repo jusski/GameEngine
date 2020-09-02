@@ -43,8 +43,11 @@ SampleEnviromentMap(enviroment_map *Map, v4 Normal, v2 ScreenPosition,
     // Reflection vector = -e - 2 * (e,N) * N  
     v3 Reflection = V3(0,0,-1) + 2.0f * Normal.z * Normal.xyz;
     
-
-    
+#if 0
+    v4 DebugColor = V4(1,1,1,1);
+    DebugColor.xyz = 0.5f*DebugColor.xyz + 0.5f*Reflection;
+    return(DebugColor);
+#else
     r32 Distance = 100.f + 1.0f - Normal.w;
     r32 Ratio = SafeRatio0(Distance, Reflection.z);
     if (Reflection.z < 0.0f)
@@ -55,16 +58,15 @@ SampleEnviromentMap(enviroment_map *Map, v4 Normal, v2 ScreenPosition,
     r32 s = Ratio * Reflection.x;
     r32 t = Ratio * Reflection.y;
     
-    r32 X = ScreenPosition.x + s;// * (Texture->Width);
-    r32 Y = ScreenPosition.y + t;// * (Texture->Height);
+    r32 X = ScreenPosition.x + s;
+    r32 Y = ScreenPosition.y + t;
     if ((X > (r32)Texture->Width - 2.0f) ||
         (Y > (r32)Texture->Height - 2.0f) ||
         (X < 0.0f) || (Y < 0.0f))
     {
         return DefaultColor;
     }
-        //X = Clamp(X, 0.0f, 98.0f);
-        //Y = Clamp(Y, 0.0f, 98.0f);
+
     u32 x = (u32)X;
     u32 y = (u32)Y;
     
@@ -74,20 +76,17 @@ SampleEnviromentMap(enviroment_map *Map, v4 Normal, v2 ScreenPosition,
     Assert(X <= (Texture->Width - 2));
     Assert(Y <= (Texture->Height - 2));
     u32 *TexelPtr = (u32 *)Texture->Bytes + y * Texture->Width + x;
-#if 1
+
     bilinear_sample Sample = BilinearSample(TexelPtr, Texture->Width);
     v4 BlendedLight = BilinearLerp(Sample, fX, fY);
-    //BlendedLight = Normalize(BlendedLight);
-#else
-    v4 BlendedLight = UnpackBGRA(TexelPtr);
-    BlendedLight = Normalize(BlendedLight);
-#endif
+    
     return(BlendedLight);
+#endif
 }
 
 internal void
 CompositeBitmap(loaded_bitmap *Destination, loaded_bitmap *Source,
-           v2 TopLeft, r32 Alpha = 1.0f)
+                v2 TopLeft, r32 Alpha = 1.0f)
 {
 
     s32 ClipX = (TopLeft.x < 0) ? (s32)-TopLeft.x : 0;
@@ -153,7 +152,7 @@ DrawBitmap(loaded_bitmap *Destination, loaded_bitmap *Source,
 {
 
     s32 ClipX = (TopLeftX < 0) ? (s32)-TopLeftX : 0;
-    s32 ClipY = (TopLeftY < 0) ? (s32)TopLeftY : 0;
+    s32 ClipY = (TopLeftY < 0) ? (s32)-TopLeftY : 0;
 
     s32 BottomRightX = (s32)TopLeftX + Source->Width;
     s32 BottomRightY = (s32)TopLeftY + Source->Height;
@@ -171,7 +170,7 @@ DrawBitmap(loaded_bitmap *Destination, loaded_bitmap *Source,
     Assert(MaxX - MinX <= (s32)Source->Width);
     Assert(MaxY - MinY <= (s32)Source->Height);
     u32 *DestinationRow = (u32 *)Destination->Bytes + Destination->Width*MinY + MinX;
-    u32 *SourceRow = (u32 *)Source->Bytes + Source->Width * (Source->Height - 1);
+    u32 *SourceRow = (u32 *)Source->Bytes;// + Source->Width * (Source->Height - 1);
     SourceRow += ClipY*Source->Width + ClipX;
     
     for (s32 y = MinY; y < MaxY; y++)
@@ -199,7 +198,7 @@ DrawBitmap(loaded_bitmap *Destination, loaded_bitmap *Source,
             SourcePixel++;
         }
         DestinationRow += Destination->Width;
-        SourceRow -= Source->Width;
+        SourceRow += Source->Width;
     }
     
 }
@@ -225,12 +224,15 @@ PushBitmap(render_group *Group, loaded_bitmap *Bitmap, v2 Offset, r32 Alpha = 1.
     Assert(Bitmap);
     render_entry_bitmap *Entry = PushRenderEntry(Group, render_entry_bitmap);
 
-    Entry->Bitmap = Bitmap;
-    Entry->Alpha = Alpha;
+    if(Entry)
+    {
+        Entry->Bitmap = Bitmap;
+        Entry->Alpha = Alpha;
 
-    r32 PixelsPerMeter = Group->GameState->PixelsPerMeter;
-    Offset.y = -Offset.y;
-    Entry->Offset = Offset * PixelsPerMeter - Bitmap->Align; 
+        r32 PixelsPerMeter = Group->GameState->PixelsPerMeter;
+        Offset.y = Offset.y;
+        Entry->Offset = Offset * PixelsPerMeter - Bitmap->Align;
+    }
 }
 
 internal void
@@ -241,10 +243,13 @@ PushCompositeBitmap(render_group *Group, loaded_bitmap *Destination,
     Assert(Destination);
     render_entry_composite *Entry = PushRenderEntry(Group, render_entry_composite);
 
-    Entry->Source = Source;
-    Entry->Destination = Destination;
-    Entry->Alpha = Alpha;
-    Entry->P = P;
+    if(Entry)
+    {
+        Entry->Source = Source;
+        Entry->Destination = Destination;
+        Entry->Alpha = Alpha;
+        Entry->P = P;
+    }
 }
 
 internal void
@@ -252,13 +257,16 @@ PushRect(render_group *Group, v2 Offset, v2 Dim, v4 Color)
 {
     render_entry_rect *Entry = PushRenderEntry(Group, render_entry_rect);
 
-    Entry->Color = Color;
+    if(Entry)
+    {
+        Entry->Color = Color;
     
-    r32 PixelsPerMeter = Group->GameState->PixelsPerMeter;
-    Offset.y = -Offset.y;
-    Entry->Offset = Offset * PixelsPerMeter;
+        r32 PixelsPerMeter = Group->GameState->PixelsPerMeter;
+        Offset.y = Offset.y;
+        Entry->Offset = Offset * PixelsPerMeter;
 
-    Entry->Dim = PixelsPerMeter * Dim;
+        Entry->Dim = PixelsPerMeter * Dim;
+    }
 }
 
 internal void
@@ -266,11 +274,13 @@ PushRectSlow(render_group *Group, v2 Origin, v2 XAxis, v2 YAxis, v4 Color)
 {
     render_entry_rect_slow *Entry = PushRenderEntry(Group, render_entry_rect_slow);
 
-    Entry->Color = Color;
-    Entry->Origin = Origin;
-    Entry->XAxis = XAxis;
-    Entry->YAxis = YAxis;
-    
+    if(Entry)
+    {
+        Entry->Color = Color;
+        Entry->Origin = Origin;
+        Entry->XAxis = XAxis;
+        Entry->YAxis = YAxis;
+    }    
 }
 
 internal void
@@ -281,16 +291,18 @@ PushTextureSlow(render_group *Group, v2 Origin, v2 XAxis, v2 YAxis,
 {
     render_entry_tex_slow *Entry = PushRenderEntry(Group, render_entry_tex_slow);
 
-    Entry->Origin = Origin;
-    Entry->XAxis = XAxis;
-    Entry->YAxis = YAxis;
-    Entry->Texture = Texture;
-    Entry->NormalMap = NormalMap;
-    Entry->Color = Color;
-    Entry->Sky = Sky;
-    Entry->Ground = Ground;
-    Entry->ScreenPosition = ScreenPosition;
-    
+    if(Entry)
+    {
+        Entry->Origin = Origin;
+        Entry->XAxis = XAxis;
+        Entry->YAxis = YAxis;
+        Entry->Texture = Texture;
+        Entry->NormalMap = NormalMap;
+        Entry->Color = Color;
+        Entry->Sky = Sky;
+        Entry->Ground = Ground;
+        Entry->ScreenPosition = ScreenPosition;
+    }    
 }
 
 internal void
@@ -298,7 +310,10 @@ PushClear(render_group *Group, v4 Color)
 {
     render_entry_clear *Entry = PushRenderEntry(Group, render_entry_clear);
 
-    Entry->Color = Color;
+    if(Entry)
+    {
+        Entry->Color = Color;
+    }
 }
 
 internal void
@@ -502,40 +517,38 @@ DrawTextureSlowly(loaded_bitmap *Destination, v2 Origin,
 
                 v4 Texel = Lerp(Lerp(TexelA, fX, TexelB), fY,
                                 Lerp(TexelC, fX, TexelD));
-     
-                v4 *NormalPtr = (v4 *)NormalMap->Bytes + Y * NormalMap->Width + X;
 
-                v4 *NormalAPtr = NormalPtr;
-                v4 *NormalBPtr = NormalPtr + 1;
-                v4 *NormalCPtr = NormalPtr + NormalMap->Width;
-                v4 *NormalDPtr = NormalPtr + NormalMap->Width + 1;
+                if(NormalMap)
+                {
+                    v4 *NormalPtr = (v4 *)NormalMap->Bytes + Y * NormalMap->Width + X;
 
-                v4 NormalA = *NormalAPtr;
-                v4 NormalB = *NormalBPtr;
-                v4 NormalC = *NormalCPtr;
-                v4 NormalD = *NormalDPtr;
+                    v4 *NormalAPtr = NormalPtr;
+                    v4 *NormalBPtr = NormalPtr + 1;
+                    v4 *NormalCPtr = NormalPtr + NormalMap->Width;
+                    v4 *NormalDPtr = NormalPtr + NormalMap->Width + 1;
 
-                v4 Normal = Lerp(Lerp(NormalA, fX, NormalB), fY,
-                                 Lerp(NormalC, fX, NormalD));
+                    v4 NormalA = *NormalAPtr;
+                    v4 NormalB = *NormalBPtr;
+                    v4 NormalC = *NormalCPtr;
+                    v4 NormalD = *NormalDPtr;
 
-                v2 NXAxis = 1.f/Length(XAxis) * XAxis;
-                v2 NYAxis = 1.f/Length(YAxis) * YAxis;
+                    v4 Normal = Lerp(Lerp(NormalA, fX, NormalB), fY,
+                                     Lerp(NormalC, fX, NormalD));
+                    
+                    v2 NXAxis = 1.f/Length(XAxis) * XAxis;
+                    v2 NYAxis = 1.f/Length(YAxis) * YAxis;
                 
-                Normal.xy =  Normal.x*(NXAxis) - Normal.y*(NYAxis);
+                    Normal.xy =  Normal.x*(NXAxis) - Normal.y*(NYAxis);
                 
-                
-                r32 Nx = (r32)x / NormalMap->Width;
-                r32 Ny = (r32)y / NormalMap->Height;
-                r32 NX = (r32)x / Destination->Width;
-                r32 NY = (r32)y / Destination->Height;
-                
-                v4 Light = SampleEnviromentMap(Sky, Normal,
-                                               ScreenPosition + 1.f*V2(x,y),
-                                               V4(1,1,1,1));
+                         
+                    v4 Light = SampleEnviromentMap(Sky, Normal,
+                                                   ScreenPosition + 1.0f*V2(x,y),
+                                                   V4(1,1,1,1));
 
-                Texel.rgb = Texel.rgb +
-                    Texel.a* Lerp(Texel.rgb, Normal.w, Light.rgb);
-
+                    Texel.rgb = Texel.rgb +
+                        Texel.a* Lerp(Texel.rgb, Normal.w, Light.rgb);
+                }
+                
                 Texel = Hadamard(Texel, Color);
 
                 v4 Pixel = UnpackBGRA(PixelPtr);
@@ -718,8 +731,15 @@ RenderOutput(render_group *Group, loaded_bitmap *Target,
                 Assert(Entry->Bitmap);
                 
                 v2 P = ScreenCenter + Entry->Offset;
-#if 0
+#if 1
                 DrawBitmap(Target, Entry->Bitmap, P.x, P.y, Entry->Alpha);
+#else
+                v2 XAxis = (r32)Entry->Bitmap->Width * V2(1.f, 0.f);
+                v2 YAxis = -(r32)Entry->Bitmap->Height * V2(0.f, 1.f);//Perp(XAxis);
+                DrawTextureSlowly(Target, P, XAxis, YAxis,
+                                  Entry->Bitmap, 0,
+                                  V4(1,1,1,1), 0, 0,
+                                  V2(0,0));                
 #endif
                 Address += sizeof(*Entry);
             } break;
@@ -729,17 +749,16 @@ RenderOutput(render_group *Group, loaded_bitmap *Target,
                 render_entry_composite *Entry = (render_entry_composite *) Header;
                 Assert(Entry->Source);
                 Assert(Entry->Destination);
-                
-#if 0 
+
                 CompositeBitmap(Entry->Destination, Entry->Source, Entry->P);
-#endif
+
                 Address += sizeof(*Entry);
             } break;
             
             case(RenderGroupEntryType_render_entry_rect):
             {
                 render_entry_rect *Entry = (render_entry_rect *) Header;
-                v2 P = ScreenCenter + Entry->Offset;
+                v2 P = ScreenCenter + 2.f*Entry->Offset;
                 v2 HalfDim = 0.5f * Entry->Dim;
          
                 DrawRectangle(Target, P - HalfDim, P + HalfDim, Entry->Color);
