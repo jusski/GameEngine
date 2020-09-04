@@ -96,6 +96,8 @@ struct game_memory
     void *TransientStorage;
     u32 TransientStorageSize;
     read_file_to_memory *ReadFileToMemory;
+
+    debug_cycle_counter DebugCycleCounters[DebugCycleCounterType_Size];
 };
 
 struct entity

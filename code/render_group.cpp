@@ -481,7 +481,7 @@ DrawTextureSlowly(loaded_bitmap *Destination, v2 Origin,
                 Edge2 <= 0 &&
                 Edge3 <= 0)
             {
-
+                BEGIN_TIMED_BLOCK(PixelHit);
                 d -= YAxis;
                 r32 U = (d * XAxis) * InvXAxisLenSq;
                 r32 V = (d * -YAxis) * InvYAxisLenSq;
@@ -559,9 +559,230 @@ DrawTextureSlowly(loaded_bitmap *Destination, v2 Origin,
                 Blended = Linear1ToSRGBA255(Blended);
 
                 *PixelPtr = PackBGRA(Blended);
+                END_TIMED_BLOCK(PixelHit);
             }
         } 
     }
+        
+}
+
+internal void
+DrawTextureQuick(loaded_bitmap *Destination, v2 Origin,
+                  v2 XAxis, v2 YAxis, loaded_bitmap *Texture,
+                  v4 Color)
+{
+
+    __m128 Value = _mm_set1_ps(1.0f);
+    
+    v2 P[4];
+    P[0] = Origin;
+    P[1] = Origin + XAxis;
+    P[2] = Origin + XAxis + YAxis;
+    P[3] = Origin + YAxis;
+
+    s32 MinX = Destination->Width;
+    s32 MaxX = 0;
+    s32 MinY = Destination->Height;
+    s32 MaxY = 0;
+    
+    for (u32 i = 0 ; i < ArrayCount(P); ++i)
+    {
+        MinX = Minimum(MinX, Floor(P[i].x));
+        MinY = Minimum(MinY, Floor(P[i].y));
+
+        MaxX = Maximum(MaxX, Ceill(P[i].x));
+        MaxY = Maximum(MaxY, Ceill(P[i].y));
+        
+    }
+
+    MinX = Maximum(0, MinX);
+    MinY = Maximum(0, MinY);
+    MaxX = Minimum((s32)Destination->Width - 1, MaxX);
+    MaxY = Minimum((s32)Destination->Height - 1, MaxY);
+
+    r32 InvXAxisLenSq = 1.0f / LengthSquared(XAxis);
+    r32 InvYAxisLenSq = 1.0f / LengthSquared(YAxis);
+    u32 TexWidth = Texture->Width;
+    u32 TexHeight = Texture->Height;
+    BEGIN_TIMED_BLOCK(PixelHit);
+    for (s32 y = MinY; y <= MaxY; ++y)
+    {
+        for (s32 x = MinX; x <= MaxX; ++x)
+        {
+            u32 *PixelPtr = (u32 *)Destination->Bytes + y * Destination->Width + x;
+            
+            //v2 PixelP = V2(x, y);
+            //v2 d = PixelP - Origin;
+
+            f32 Px = (f32)x;
+            f32 Py = (f32)y;
+            f32 dx = Px - Origin.x;
+            f32 dy = Py - Origin.y;
+           
+            //r32 U = (d * XAxis) * InvXAxisLenSq;
+            //r32 V = (d * YAxis) * InvYAxisLenSq;
+
+            f32 U = (dx * XAxis.x + dy * XAxis.y) * InvXAxisLenSq;
+            f32 V = (dx * YAxis.x + dy * YAxis.y) * InvYAxisLenSq;
+
+            if (U >= 0.0f &&
+                U <= 1.0f &&
+                V >= 0.0f &&
+                V <= 1.0f)
+            {
+                
+                //Assert((U >= 0.0f) && (U <= 1.0f));
+                //Assert((V >= 0.0f) && (V <= 1.0f));
+                
+                f32 TexX = U * (f32)(TexWidth - 2);
+                f32 TexY = V * (f32)(TexHeight - 2);
+
+                u32 X = (u32)TexX;
+                u32 Y = (u32)TexY;
+
+                f32 fX = TexX - (f32)X;
+                f32 fY = TexY - (f32)Y;
+                
+                u32 *TexelPtr = (u32 *)Texture->Bytes + Y * TexWidth + X;
+
+                u32 *TexelAPtr = TexelPtr;
+                u32 *TexelBPtr = TexelPtr + 1;
+                u32 *TexelCPtr = TexelPtr + TexWidth;
+                u32 *TexelDPtr = TexelPtr + TexWidth + 1;
+
+                //v4 TexelA = UnpackBGRA(TexelAPtr);
+                //v4 TexelB = UnpackBGRA(TexelBPtr);
+                //v4 TexelC = UnpackBGRA(TexelCPtr);
+                //v4 TexelD = UnpackBGRA(TexelDPtr);
+                // Unpack A B C D
+                f32 TexelAr = (f32)((*TexelAPtr >> 16) & 0xFF);
+                f32 TexelAg = (f32)((*TexelAPtr >> 8)  & 0xFF);
+                f32 TexelAb = (f32)((*TexelAPtr >> 0)  & 0xFF);
+                f32 TexelAa = (f32)((*TexelAPtr >> 24) & 0xFF);
+
+                f32 TexelBr = (f32)((*TexelBPtr >> 16) & 0xFF);
+                f32 TexelBg = (f32)((*TexelBPtr >> 8)  & 0xFF);
+                f32 TexelBb = (f32)((*TexelBPtr >> 0)  & 0xFF);
+                f32 TexelBa = (f32)((*TexelBPtr >> 24) & 0xFF);
+
+                f32 TexelCr = (f32)((*TexelCPtr >> 16) & 0xFF);
+                f32 TexelCg = (f32)((*TexelCPtr >> 8)  & 0xFF);
+                f32 TexelCb = (f32)((*TexelCPtr >> 0)  & 0xFF);
+                f32 TexelCa = (f32)((*TexelCPtr >> 24) & 0xFF);
+
+                f32 TexelDr = (f32)((*TexelDPtr >> 16) & 0xFF);
+                f32 TexelDg = (f32)((*TexelDPtr >> 8)  & 0xFF);
+                f32 TexelDb = (f32)((*TexelDPtr >> 0)  & 0xFF);
+                f32 TexelDa = (f32)((*TexelDPtr >> 24) & 0xFF);
+
+                //TexelA = SRGBA255ToLinear1(TexelA);
+                //TexelB = SRGBA255ToLinear1(TexelB);
+                //TexelC = SRGBA255ToLinear1(TexelC);
+                //TexelD = SRGBA255ToLinear1(TexelD);
+                // SRGBA255 To Linear space
+                f32 Inv255 = 1.0f/255.0f;
+
+                TexelAr *= Inv255;
+                TexelAg *= Inv255;
+                TexelAb *= Inv255;
+                TexelAa *= Inv255;
+
+                TexelBr *= Inv255;
+                TexelBg *= Inv255;
+                TexelBb *= Inv255;
+                TexelBa *= Inv255;
+
+                TexelCr *= Inv255;
+                TexelCg *= Inv255;
+                TexelCb *= Inv255;
+                TexelCa *= Inv255;
+
+                TexelDr *= Inv255;
+                TexelDg *= Inv255;
+                TexelDb *= Inv255;
+                TexelDa *= Inv255;
+
+                TexelAr = Square(TexelAr);
+                TexelAg = Square(TexelAg);
+                TexelAb = Square(TexelAb);
+
+                TexelBr = Square(TexelBr);
+                TexelBg = Square(TexelBg);
+                TexelBb = Square(TexelBb);
+
+                TexelCr = Square(TexelCr);
+                TexelCg = Square(TexelCg);
+                TexelCb = Square(TexelCb);
+
+                TexelDr = Square(TexelDr);
+                TexelDg = Square(TexelDg);
+                TexelDb = Square(TexelDb);
+                
+                
+
+                //             v4 Texel = Lerp(Lerp(TexelA, fX, TexelB), fY,
+                //              Lerp(TexelC, fX, TexelD));
+                // Lerp A B C D
+                f32 LerpABr = (1.0f - fX) * TexelAr + fX * TexelBr;
+                f32 LerpABg = (1.0f - fX) * TexelAg + fX * TexelBg;
+                f32 LerpABb = (1.0f - fX) * TexelAb + fX * TexelBb;
+                f32 LerpABa = (1.0f - fX) * TexelAa + fX * TexelBa;
+                
+                f32 LerpCDr = (1.0f - fX) * TexelCr + fX * TexelDr;
+                f32 LerpCDg = (1.0f - fX) * TexelCg + fX * TexelDg;
+                f32 LerpCDb = (1.0f - fX) * TexelCb + fX * TexelDb;
+                f32 LerpCDa = (1.0f - fX) * TexelCa + fX * TexelDa;
+
+                f32 Texelr = (1.0f - fY) * LerpABr + fY * LerpCDr;
+                f32 Texelg = (1.0f - fY) * LerpABg + fY * LerpCDg;
+                f32 Texelb = (1.0f - fY) * LerpABb + fY * LerpCDb;
+                f32 Texela = (1.0f - fY) * LerpABa + fY * LerpCDa;
+                                
+                //Texel = Hadamard(Texel, Color);
+
+                //v4 Pixel = UnpackBGRA(PixelPtr);
+                //Pixel = SRGBA255ToLinear1(Pixel);
+                f32 Pixelr = (f32)((*PixelPtr >> 16) & 0xFF);
+                f32 Pixelg = (f32)((*PixelPtr >> 8)  & 0xFF);
+                f32 Pixelb = (f32)((*PixelPtr >> 0)  & 0xFF);
+                f32 Pixela = (f32)((*PixelPtr >> 24) & 0xFF);
+
+                Pixelr *= Inv255;
+                Pixelg *= Inv255;
+                Pixelb *= Inv255;
+                Pixela *= Inv255;
+
+                Pixelr = Square(Pixelr);
+                Pixelg = Square(Pixelg);
+                Pixelb = Square(Pixelb);
+
+                
+                f32 InvA = 1.0f - Texela;
+                //v4 Blended = InvA * Pixel + Texel;
+                f32 Blendedr = InvA * Pixelr + Texelr;
+                f32 Blendedg = InvA * Pixelg + Texelg;
+                f32 Blendedb = InvA * Pixelb + Texelb;
+                f32 Blendeda = InvA * Pixela + Texela;
+                
+                //Blended = Linear1ToSRGBA255(Blended);
+                f32 One255 = 255.0f;
+                Blendedr = One255 * SquareRoot(Blendedr);
+                Blendedg = One255 * SquareRoot(Blendedg);
+                Blendedb = One255 * SquareRoot(Blendedb);
+                Blendeda = One255 * Blendeda;
+
+                //*PixelPtr = PackBGRA(Blended);
+                        
+                *PixelPtr = (
+                    ((u32)Blendedr << 16) |
+                    ((u32)Blendedg << 8)  |
+                    ((u32)Blendedb << 0)  |
+                    ((u32)Blendeda << 24));
+
+            }
+        } 
+    }
+    END_TIMED_BLOCK_COUNTED(PixelHit, ((MaxX-MinX)*(MaxY-MinY)));
         
 }
 
@@ -717,6 +938,8 @@ internal void
 RenderOutput(render_group *Group, loaded_bitmap *Target,
              r32 PixelsPerMeter )
 {
+    TIMED_FUNCTION();
+    
     v2 ScreenCenter = 0.5f * V2(Target->Width, Target->Height);
 
     for (u32 Address = 0; Address < Group->PushBufferSize;)
@@ -731,15 +954,13 @@ RenderOutput(render_group *Group, loaded_bitmap *Target,
                 Assert(Entry->Bitmap);
                 
                 v2 P = ScreenCenter + Entry->Offset;
-#if 1
+#if 0
                 DrawBitmap(Target, Entry->Bitmap, P.x, P.y, Entry->Alpha);
 #else
                 v2 XAxis = (r32)Entry->Bitmap->Width * V2(1.f, 0.f);
-                v2 YAxis = -(r32)Entry->Bitmap->Height * V2(0.f, 1.f);//Perp(XAxis);
-                DrawTextureSlowly(Target, P, XAxis, YAxis,
-                                  Entry->Bitmap, 0,
-                                  V4(1,1,1,1), 0, 0,
-                                  V2(0,0));                
+                v2 YAxis = (r32)Entry->Bitmap->Height * V2(0.f, 1.f);//Perp(XAxis);
+                DrawTextureQuick(Target, P, XAxis, YAxis,
+                                  Entry->Bitmap, V4(1,1,1,1));                
 #endif
                 Address += sizeof(*Entry);
             } break;

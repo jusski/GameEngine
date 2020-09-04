@@ -713,7 +713,7 @@ int WINAPI
 WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowCommand)
 {
     WNDCLASS WindowClass = {};
-    WindowClass.style = CS_HREDRAW | CS_VREDRAW;
+    WindowClass.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW;
     WindowClass.hInstance = Instance;
     WindowClass.lpszClassName = "Learning C Windows Class!";
     WindowClass.lpfnWndProc = WindowProc;
@@ -834,6 +834,23 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 SoundData.Samples = Bytes / SoundOutput.BytesPerSample;
 
                 GameCode.GameEngine(&Memory, &GameInput, &SoundData, &Video);
+
+                
+                Trace("DEBUG COUNTERS:\n");
+                for (u32 Index = 0; Index < ArrayCount(Memory.DebugCycleCounters); ++Index)
+                {
+                    debug_cycle_counter *Cycles = Memory.DebugCycleCounters + Index;
+                    if (Cycles->Hits > 0)
+                    {
+                        Trace("%u: %I64uc %uh %I64u c/h\n",
+                              Index, Cycles->Cycles,
+                              Cycles->Hits,
+                              Cycles->Cycles / (u64)Cycles->Hits);
+                        Cycles->Cycles = 0;
+                        Cycles->Hits = 0;
+                    }
+                }
+                
                 Win32FillSoundBuffer(&SoundOutput, &SoundData, ByteToLock, Bytes);
 
 #if 0
@@ -841,6 +858,7 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 Win32DebugSoundSync(Markers, Count, SoundOutput.BufferSize);
 #endif
                 QueryPerformanceCounter(&Counter);
+                
                 LONGLONG TargetCounterValue = LastCounter.QuadPart + CountsPerFrame;
                 if (Counter.QuadPart < TargetCounterValue)
                 {
@@ -856,7 +874,7 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 {
                     Trace("ALERT: Frame skipped!\n");
                 }
-
+                
                 QueryPerformanceCounter(&Counter);
                 HDC DeviceContext = GetDC(Window);
                 Win32UpdateWindow(DeviceContext, &GlobalBitmap, 0, 0, ClientWidth, ClientHeight);

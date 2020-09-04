@@ -1,6 +1,8 @@
 #pragma once
 
 #include <stdint.h>
+#include <intrin.h>
+
 #define global_variable static
 #define internal static
 #define local_persist static
@@ -13,7 +15,7 @@
 #define Assert(Statement) if(!(Statement)) {*(int *)0 = 0;}
 #define INVALID_CODE_PATH Assert(!"InvalidCodePath")
 #define ArrayCount(Array) (sizeof(Array) / (sizeof(Array[0])))
-#define Trace(Format, ...) {_snprintf_s(OutputDebugMessage, sizeof(OutputDebugMessage), Format, ## __VA_ARGS__); OutputDebugStringA(OutputDebugMessage);}
+
 #define InvalidDefaultCase default: {INVALID_CODE_PATH;} break;
 
 #define Minimum(A, B) (A) < (B) ? (A) : (B)
@@ -52,7 +54,51 @@ typedef float real32;
 typedef double real64;
 typedef real32 r32;
 typedef real64 r64;
+typedef real32 f32;
+typedef real64 f64;
 
+#define BEGIN_TIMED_BLOCK(ID) u64 CycleCountStart_##ID = __rdtsc();
+#define END_TIMED_BLOCK(ID) GlobalMemory->DebugCycleCounters[DebugCycleCounterType_##ID].Cycles += __rdtsc() - CycleCountStart_##ID; ++GlobalMemory->DebugCycleCounters[DebugCycleCounterType_##ID].Hits;
+#define END_TIMED_BLOCK_COUNTED(ID, Count) GlobalMemory->DebugCycleCounters[DebugCycleCounterType_##ID].Cycles += __rdtsc() - CycleCountStart_##ID; GlobalMemory->DebugCycleCounters[DebugCycleCounterType_##ID].Hits += (Count);
+
+#define TIMED_FUNCTION_(Name, Counter) timed_block DebugCounter_(Name, Counter);
+#define TIMED_FUNCTION() TIMED_FUNCTION_(__FUNCTION__, __COUNTER__)
+
+
+enum 
+{
+    DebugCycleCounterType_GameEngine,
+    DebugCycleCounterType_PixelHit,
+    DebugCycleCounterType_Size,
+};
+
+struct debug_cycle_counter
+{
+    u64 Cycles;
+    u32 Hits;
+    char *Name;
+};
+
+
+debug_cycle_counter DebugCycles[];
+
+struct timed_block
+{
+    u32 Index;
+    u64 StartCycles;
+    char *Name;
+    timed_block(char *Name, u32 DebugIndex)
+    {
+        Index = DebugIndex;
+        StartCycles = __rdtsc();
+    }
+    ~timed_block()
+    {
+        DebugCycles[Index].Cycles += __rdtsc() - StartCycles;
+        DebugCycles[Index].Hits++;
+        DebugCycles[Index].Name = Name;
+    }
+};
 
 #pragma pack(push, 1)
 struct bitmap_format

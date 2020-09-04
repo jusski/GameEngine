@@ -1,4 +1,7 @@
 #include "game.h"
+
+static game_memory *GlobalMemory;
+
 #include "entity.cpp"
 #include "tile_map.cpp"
 #include "sim_region.cpp"
@@ -665,6 +668,10 @@ GameEngine(game_memory *Memory, game_input *Input,
            game_sound_output_buffer *Sound,
            game_offscreen_bitmap *OutputBitmap)
 {
+    GlobalMemory = Memory;
+
+    BEGIN_TIMED_BLOCK(GameEngine);
+    
     loaded_bitmap Video_ = {};
     loaded_bitmap *Video = &Video_;
     Video->Bytes = (u8 *)OutputBitmap->Memory;
@@ -870,10 +877,12 @@ GameEngine(game_memory *Memory, game_input *Input,
     EndSim(SimRegion, GameState);
     EndTemporaryMemory(&SimMemory);
     EndTemporaryMemory(&RenderMemory);
-            
+
+    END_TIMED_BLOCK(GameEngine);
+    TIMED_FUNCTION();
 }
 
-
+debug_cycle_counter DebugCycles[__COUNTER__ + 1];
 
 
 
