@@ -11,6 +11,7 @@ internal move_spec
 DefaultMoveSpec()
 {
     move_spec Result;
+
     Result.UnitMaxAccelVector = false;
     Result.Speed = 1.0f;
     Result.Drag = 0.0f;
@@ -59,7 +60,7 @@ DrawLine(game_offscreen_bitmap *Bitmap, s32 x, s32 y, s32 Length, u32 Color)
     }    
 }
 
-inline u32
+internal inline u32
 ColorShift(u32 Mask)
 {
     u32 Result =
@@ -70,7 +71,7 @@ ColorShift(u32 Mask)
 }
 
 internal loaded_bitmap
-LoadBitmap(read_file_to_memory ReadFileToMemory, char *FileName)
+LoadBitmap(read_file_to_memory ReadFileToMemory, const char *FileName)
 {
     loaded_bitmap Result = {};
     
@@ -336,8 +337,7 @@ internal void
 DrawRectangleOutline(loaded_bitmap *Bitmap, v2 TopLeft, v2 BottomRight, v4 Color)
 {
     r32 T = 1.0f;
-    r32 Width = BottomRight.x - TopLeft.x;
-    r32 Height = TopLeft.y - BottomRight.y;
+    
     // Top and Bottom lines
     DrawRectangle(Bitmap, TopLeft, v2{BottomRight.x, TopLeft.y + T}, Color);
     DrawRectangle(Bitmap, v2{TopLeft.x, BottomRight.y - T}, BottomRight, Color);
@@ -663,7 +663,7 @@ InitializeTranState(transient_state *TranState, game_state *GameState,
     TranState->IsInitialized = true;    
 }
 
-extern "C" void
+extern "C" void __declspec(dllexport) 
 GameEngine(game_memory *Memory, game_input *Input,
            game_sound_output_buffer *Sound,
            game_offscreen_bitmap *OutputBitmap)
@@ -741,7 +741,7 @@ GameEngine(game_memory *Memory, game_input *Input,
                                          GroundBuffer->P, GameState->CameraPosition);
             
             //TODO Make CompositeBitmap 
-            PushBitmap(RenderGroup, GroundBuffer->Bitmap, Offset, 1.0f);
+            PushBitmap(RenderGroup, GroundBuffer->Bitmap, Offset);
             //CompositeBitmap(Video, Template, P.X, P.Y, 1.0f);
         }
     
@@ -849,7 +849,7 @@ GameEngine(game_memory *Memory, game_input *Input,
 #endif
     
     normal_map *NormalMap = &GameState->SphereNormal;
-#if 1
+#if 0
     PushTextureSlow(RenderGroup, Origin, XAxis, YAxis,
                     &GameState->Reflection, NormalMap, Color,
                     &TranState->Sky, &TranState->Ground,
@@ -882,7 +882,7 @@ GameEngine(game_memory *Memory, game_input *Input,
     TIMED_FUNCTION();
 }
 
-debug_cycle_counter DebugCycles[__COUNTER__ + 1];
+//debug_cycle_counter DebugCycles[__COUNTER__ + 1];
 
 
 

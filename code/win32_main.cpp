@@ -12,7 +12,7 @@ global_variable long ClientHeight;
 global_variable char OutputDebugMessage[200];
 global_variable GLuint TextureHandle;
 
-inline void
+internal inline void
 Win32TogleFullScreen(HWND Window)
 {
     
@@ -45,7 +45,7 @@ Win32TogleFullScreen(HWND Window)
 }
 
 loaded_file
-ReadFileToMemory(char* FileName)
+ReadFileToMemory(const char* FileName)
 {
     loaded_file Result = {};
     HANDLE FileHandle = CreateFile(FileName, GENERIC_READ,
@@ -78,10 +78,10 @@ ReadFileToMemory(char* FileName)
     return(Result);
 }
 
-internal inline uint32
+internal inline u32
 StringLength(char *String)
 {
-    uint32 Result = 0; 
+    u32 Result = 0; 
     while(*String++)
     {
         Result++;
@@ -90,9 +90,9 @@ StringLength(char *String)
 }
 
 internal void
-CatStrings(char *SourceA, uint32 SizeA,
-           char *SourceB, uint32 SizeB,
-           char *Destination, uint32 SizeD)
+CatStrings(char *SourceA, u32 SizeA,
+           char *SourceB, u32 SizeB,
+           char *Destination, u32 SizeD)
 { 
     Assert(SizeA + SizeB < SizeD);
 
@@ -109,7 +109,7 @@ CatStrings(char *SourceA, uint32 SizeA,
     *Destination = 0;
 }
 
-inline void
+internal inline void
 Win32GetExecutableDirectory()
 {
     char FileName[MAX_PATH];
@@ -170,7 +170,7 @@ Win32UnloadGameCode(win32_game_code *GameCode)
     }
 }
 
-inline FILETIME
+internal inline FILETIME
 Win32LastWriteTime(char *FileName)
 {
     FILETIME Result = {};
@@ -183,23 +183,23 @@ Win32LastWriteTime(char *FileName)
 }
 
 internal void
-Win32DebugSoundDrawVerticalLine(DWORD Position, int32 LineHeight, int32 LineOffset, uint32 Color, uint32 SoundBufferSize)
+Win32DebugSoundDrawVerticalLine(DWORD Position, s32 LineHeight, s32 LineOffset, u32 Color, u32 SoundBufferSize)
 {
     LineHeight = LineHeight > GlobalBitmap.Height ? GlobalBitmap.Height : LineHeight;
 
-    uint32 x = (uint32)(Position * ((float)GlobalBitmap.Width / (float)SoundBufferSize));
+    u32 x = (u32)(Position * ((float)GlobalBitmap.Width / (float)SoundBufferSize));
     uint8 *Memory = (uint8 *)GlobalBitmap.Memory + x * GlobalBitmap.Stride + LineOffset * GlobalBitmap.Pitch;
-    for (int32 i = LineOffset; i < LineHeight; i++)
+    for (s32 i = LineOffset; i < LineHeight; i++)
     {
-        *(uint32 *)Memory = Color;
+        *(u32 *)Memory = Color;
         Memory += GlobalBitmap.Pitch;
     }
 }
 
 internal void
-Win32DebugSoundSync(win32_debug_sound_markers *Markers, uint32 Count, uint32 SoundBufferSize)
+Win32DebugSoundSync(win32_debug_sound_markers *Markers, u32 Count, u32 SoundBufferSize)
 {
-    for (uint32 i = 0; i < Count; i++)
+    for (u32 i = 0; i < Count; i++)
     {
         win32_debug_sound_markers *Marker = &Markers[i];
         Win32DebugSoundDrawVerticalLine(Marker->PlayCursor, 400, 0, 0xff00ff, SoundBufferSize);
@@ -283,7 +283,7 @@ Win32FillSoundBuffer(win32_sound_output *SoundOutput,
 
     int16 *Target = (int16 *) WriteCursor1;
     int16 *Source = SoundData->Buffer;
-    uint32 SamplesToWrite = AudioBytes1 / SoundOutput->BytesPerSample;
+    u32 SamplesToWrite = AudioBytes1 / SoundOutput->BytesPerSample;
     while (SamplesToWrite)
     {
 
@@ -311,7 +311,7 @@ Win32FillSoundBuffer(win32_sound_output *SoundOutput,
 
 
 internal void
-Win32ResizeBitmap(win32_offscreen_bitmap *Bitmap, int32 Width, int32 Height)
+Win32ResizeBitmap(win32_offscreen_bitmap *Bitmap, s32 Width, s32 Height)
 {
     Bitmap->BytesPerPixel = 4;
     Bitmap->Width = Width;
@@ -411,7 +411,7 @@ Win32InitializeOpenGL(HWND Window)
     PIXELFORMATDESCRIPTOR DesiredPixelFormat = {};
     DesiredPixelFormat.nSize = sizeof(PIXELFORMATDESCRIPTOR);
     DesiredPixelFormat.nVersion = 1;
-    DesiredPixelFormat.dwFlags = PFD_SUPPORT_OPENGL|PFD_DRAW_TO_WINDOW|PFD_DOUBLEBUFFER;
+    DesiredPixelFormat.dwFlags = PFD_SUPPORT_OPENGL | PFD_DRAW_TO_WINDOW | PFD_DOUBLEBUFFER;
     DesiredPixelFormat.iPixelType = PFD_TYPE_RGBA;
     DesiredPixelFormat.cColorBits = 24;
     DesiredPixelFormat.cAlphaBits = 8;
@@ -537,7 +537,7 @@ Win32ProcessKeyboardInput(HWND Window, win32_state *State, game_controller_input
             case WM_SYSKEYDOWN:
             case WM_SYSKEYUP:
             {
-                uint32 KeyCode = Message.wParam;
+                u32 KeyCode = Message.wParam;
                 bool32 IsDown = ((Message.lParam & (1 << 31)) == 0);
                 bool32 WasDown =  ((Message.lParam & (1 << 30)) != 0);
                 if (IsDown)
@@ -709,9 +709,25 @@ Win32ResetKeyboardTransitionCount(game_controller_input *Keyboard)
     }
 }
 
+DWORD WINAPI
+ThreadProc(LPVOID Argument)
+{
+    while(true)
+    {
+        Trace("HELLO THREAD\n");
+        Sleep(1000);
+    }
+    
+    return(0);
+}
+
 int WINAPI
 WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowCommand)
 {
+    DWORD ThreadID;
+    HANDLE ThreadHandle = CreateThread(0,0, ThreadProc, 0, 0, &ThreadID);
+    CloseHandle(ThreadHandle);
+    
     WNDCLASS WindowClass = {};
     WindowClass.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW;
     WindowClass.hInstance = Instance;
@@ -780,8 +796,8 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
         {
 #if _DEBUG
             win32_debug_sound_markers Markers[15] = {};
-            uint32 Count = ArrayCount(Markers);
-            uint32 MarkerIndex = 0;
+            u32 Count = ArrayCount(Markers);
+            u32 MarkerIndex = 0;
 #endif
         
             LARGE_INTEGER Counter;
@@ -842,8 +858,8 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                     debug_cycle_counter *Cycles = Memory.DebugCycleCounters + Index;
                     if (Cycles->Hits > 0)
                     {
-                        Trace("%u: %I64uc %uh %I64u c/h\n",
-                              Index, Cycles->Cycles,
+                        Trace("%s: %I64uc %uh %I64u c/h\n",
+                              Cycles->Name, Cycles->Cycles,
                               Cycles->Hits,
                               Cycles->Cycles / (u64)Cycles->Hits);
                         Cycles->Cycles = 0;
@@ -872,7 +888,7 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 }
                 else
                 {
-                    Trace("ALERT: Frame skipped!\n");
+                    //Trace("ALERT: Frame skipped!\n");
                 }
                 
                 QueryPerformanceCounter(&Counter);
@@ -885,7 +901,7 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                       PlayCursor, WriteCursor, ByteToLock, Bytes,
                       (float)PerformanceCounterFrequency.QuadPart / (float)(Counter.QuadPart - LastCounter.QuadPart));
 #endif
-#if 1
+#if 0
 
                 float Delta = (float)(Counter.QuadPart - LastCounter.QuadPart);
                 float FPS = (float)PerformanceCounterFrequency.QuadPart / Delta;

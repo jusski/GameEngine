@@ -1,6 +1,6 @@
 #pragma once
 
-inline r32
+internal inline r32
 SafeRatio0(r32 A, r32 B)
 {
     r32 Result = A / B;
@@ -12,7 +12,7 @@ SafeRatio0(r32 A, r32 B)
     return(Result);
 }
 
-inline r32
+internal inline r32
 Inner(v2 A, v2 B)
 {
     r32 Result = A.x * B.x + A.y * B.y;
@@ -20,7 +20,7 @@ Inner(v2 A, v2 B)
     return(Result);
 }
 
-inline r32
+internal inline r32
 Lerp(r32 A, r32 t, r32 B)
 {
     r32 Result = (1.0f - t)*A + t*B;
@@ -28,7 +28,7 @@ Lerp(r32 A, r32 t, r32 B)
     return(Result);
 }
 
-inline v3
+internal inline v3
 Lerp(v3 A, r32 t, v3 B)
 {
     v3 Result = (1.0f - t) * A + t*B;
@@ -36,7 +36,7 @@ Lerp(v3 A, r32 t, v3 B)
     return(Result);
 }
 
-inline v4
+internal inline v4
 Lerp(v4 A, r32 t, v4 B)
 {
     v4 Result = (1.0f - t) * A + t*B;
@@ -44,7 +44,7 @@ Lerp(v4 A, r32 t, v4 B)
     return(Result);
 }
 
-inline v2
+internal inline v2
 Perp(v2 A)
 {
     v2 Result = {-A.y, A.x};
@@ -52,7 +52,7 @@ Perp(v2 A)
     return(Result);
 }
 
-inline rectangle2
+internal inline rectangle2
 AddRadiusTo(rectangle2 A, r32 Width, r32 Height)
 {
     rectangle2 Result;
@@ -63,7 +63,7 @@ AddRadiusTo(rectangle2 A, r32 Width, r32 Height)
 }
 
 
-inline bool32
+internal inline bool32
 IsInRectangle(rectangle2 &Rectangle, v2 &P)
 {
     bool32 Result = false;
@@ -81,7 +81,7 @@ IsInRectangle(rectangle2 &Rectangle, v2 &P)
 
 
 
-inline rectangle2
+internal inline rectangle2
 RectMinMax(v2 Min, v2 Max)
 {
     rectangle2 Result;
@@ -92,7 +92,7 @@ RectMinMax(v2 Min, v2 Max)
     return(Result);
 }
 
-inline rectangle2
+internal inline rectangle2
 RectCentHalfDim(v2 Center, v2 HalfDim)
 {
     rectangle2 Result;
@@ -103,7 +103,7 @@ RectCentHalfDim(v2 Center, v2 HalfDim)
     return(Result);
 }
 
-inline rectangle2
+internal inline rectangle2
 RectCentDim(v2 Center, v2 Dim)
 {
     rectangle2 Result = RectCentHalfDim(Center, 0.5f*Dim);
@@ -111,7 +111,7 @@ RectCentDim(v2 Center, v2 Dim)
     return(Result);
 }
 
-inline v2
+internal inline v2
 GetCenter(rectangle2 Rect)
 {
     v2 Result;
@@ -121,7 +121,7 @@ GetCenter(rectangle2 Rect)
     return(Result);
 }
 
-inline v2
+internal inline v2
 GetMinCorner(rectangle2 Rect)
 {
     v2 Result = Rect.Min;
@@ -129,7 +129,7 @@ GetMinCorner(rectangle2 Rect)
     return(Result);
 }
 
-inline v2
+internal inline v2
 GetMaxCorner(rectangle2 Rect)
 {
     v2 Result = Rect.Max;
@@ -137,7 +137,7 @@ GetMaxCorner(rectangle2 Rect)
     return(Result);
 }
 
-inline v4
+internal inline v4
 SRGBA255ToLinear1(v4 A)
 {
     v4 Result = 1.0f/255.0f * A;
@@ -148,7 +148,7 @@ SRGBA255ToLinear1(v4 A)
     return(Result);
 }
 
-inline v4
+internal inline v4
 UnpackBGRA(u32 *Ptr)
 {
     v4 Result = V4(((*Ptr >> 16) & 0xFF),
@@ -159,7 +159,7 @@ UnpackBGRA(u32 *Ptr)
     return(Result);
 }
 
-inline u32
+internal inline u32
 PackBGRA(v4 Color)
 {
     u32 Result =
@@ -171,7 +171,7 @@ PackBGRA(v4 Color)
     return(Result);
 }
 
-inline v2
+internal inline v2
 Normalize(v2 A)
 {
     r32 InvLength = SafeRatio0(1.0f, Length(A));
@@ -180,7 +180,7 @@ Normalize(v2 A)
     return(Result);
 }
 
-inline v3
+internal inline v3
 Normalize(v3 A)
 {
     r32 InvLength = SafeRatio0(1.0f, Length(A));
@@ -189,7 +189,7 @@ Normalize(v3 A)
     return(Result);
 }
 
-inline v4
+internal inline v4
 Normalize(v4 A)
 {
     r32 InvLength = SafeRatio0(1.0f, Length(A));
@@ -198,7 +198,7 @@ Normalize(v4 A)
     return(Result);
 }
 
-inline v4
+internal inline v4
 Linear1ToSRGBA255(v4 A)
 {
     v4 Result = {255.0f * SquareRoot(A.r),
@@ -209,7 +209,7 @@ Linear1ToSRGBA255(v4 A)
     return(Result);
 }
 
-inline v3
+internal inline v3
 Hadamard(v3 A, v3 B)
 {
     v3 Result = {A.x * B.x,
@@ -219,7 +219,7 @@ Hadamard(v3 A, v3 B)
     return(Result);
 }
 
-inline v4
+internal inline v4
 Hadamard(v4 A, v4 B)
 {
     v4 Result = {A.x * B.x,

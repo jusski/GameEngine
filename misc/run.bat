@@ -1,5 +1,5 @@
 @echo off
 pushd
-cd e:\build\
+cd %~d0\build\
 win32_main.exe
 popd

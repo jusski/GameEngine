@@ -128,6 +128,8 @@
 	(font-lock-add-keywords
 	 mode
 	 '(("\\<\\(TODO\\)" 1 'font-lock-fixme-face t)
+	   ("\\<\\([A-Z_]+\\)[(),;]" 1 'font-lock-macros-face t)
+	   ("\\<\\([A-Z_]+\\) [|&]" 1 'font-lock-macros-face t)
 	   ("\\<\\(internal\\)" 1 'font-lock-macros-face t)
 	   ("\\<\\([[:upper:]]\\sw+\\)(" 1 'font-lock-function-call-face t)
 	   ("\\<\\(PushArray\\)" 1 'font-lock-macros-face t)
@@ -143,7 +145,6 @@
 	   ("\\<\\(Trace\\)" 1 'font-lock-macros-face t)
 	   ("\\<\\(Assert\\)" 1 'font-lock-macros-face t)
 	   ("\\<\\(INVALID_CODE_PATH\\)" 1 'font-lock-macros-face t)
-	   ("\\<\\([[:upper:]]+\\)(" 1 'font-lock-macros-face t)
 	   ("\\<\\(NOTE\\)" 1 'font-lock-note-face t))))
       fixme-modes)
 
@@ -686,5 +687,17 @@ the documentation of `query-replace'"
   (set-background-color "#161616")
   (set-cursor-color "#40FF40")
   (setq auto-window-vscroll nil)
-)
+  )
+
+(defun delete-backward-word1 ()
+  (interactive)
+  (let ((beg (point))) (backward-word 1) (delete-region beg (point))))
+
+(defun delete-forward-word1 ()
+  (interactive)
+  (let ((beg (point))) (forward-word 1) (delete-region beg (point))))
+
+
+(global-set-key [(control backspace)] 'delete-backward-word1)
+(global-set-key [(control delete)] 'delete-forward-word1)
 (add-hook 'window-setup-hook 'post-load-stuff t)

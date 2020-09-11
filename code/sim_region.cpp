@@ -78,7 +78,7 @@ AddEntity(sim_region *SimRegion, entity *StoredEntity, v2 *P = 0)
 }
 
 
-inline void
+internal inline void
 LoadEntityReference(sim_region *SimRegion, game_state *GameState, entity_reference *Ref)
 {
     if (Ref->Index)
@@ -94,7 +94,7 @@ LoadEntityReference(sim_region *SimRegion, game_state *GameState, entity_referen
     }
 }
 
-inline void
+internal inline void
 StoreEntityReference(entity_reference *Ref)
 {
     if (Ref->Ptr)
@@ -220,7 +220,7 @@ MoveEntity(sim_region * SimRegion, sim_entity *Entity, r32 dt,
     ddP *= MoveSpec->Speed;
     ddP += -MoveSpec->Drag* Entity->dP;
     
-    tile_map *TileMap = SimRegion->TileMap;
+    
     v2 PositionDelta = Square(dt)* 0.5f * ddP + dt * Entity->dP;
 
     v2 NewPosition = Entity->P + PositionDelta;

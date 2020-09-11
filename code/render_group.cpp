@@ -1,5 +1,6 @@
 #include "render_group.h"
 
+
 internal bilinear_sample
 BilinearSample(u32 *TexelPtr, u32 Pitch)
 {
@@ -14,7 +15,7 @@ BilinearSample(u32 *TexelPtr, u32 Pitch)
     Result.B = UnpackBGRA(TexelBPtr);
     Result.C = UnpackBGRA(TexelCPtr);
     Result.D = UnpackBGRA(TexelDPtr);
-
+    
     return(Result);
 }
 
@@ -568,12 +569,10 @@ DrawTextureSlowly(loaded_bitmap *Destination, v2 Origin,
 
 internal void
 DrawTextureQuick(loaded_bitmap *Destination, v2 Origin,
-                  v2 XAxis, v2 YAxis, loaded_bitmap *Texture,
-                  v4 Color)
+                 v2 XAxis, v2 YAxis, loaded_bitmap *Texture,
+                 v4 Color)
 {
 
-    __m128 Value = _mm_set1_ps(1.0f);
-    
     v2 P[4];
     P[0] = Origin;
     P[1] = Origin + XAxis;
@@ -581,9 +580,9 @@ DrawTextureQuick(loaded_bitmap *Destination, v2 Origin,
     P[3] = Origin + YAxis;
 
     s32 MinX = Destination->Width;
-    s32 MaxX = 0;
+    s32 MaxX = -1;
     s32 MinY = Destination->Height;
-    s32 MaxY = 0;
+    s32 MaxY = -1;
     
     for (u32 i = 0 ; i < ArrayCount(P); ++i)
     {
@@ -602,185 +601,381 @@ DrawTextureQuick(loaded_bitmap *Destination, v2 Origin,
 
     r32 InvXAxisLenSq = 1.0f / LengthSquared(XAxis);
     r32 InvYAxisLenSq = 1.0f / LengthSquared(YAxis);
+   
+    v2 nXAxis = InvXAxisLenSq * XAxis;
+    v2 nYAxis = InvYAxisLenSq * YAxis;
+   
+    
     u32 TexWidth = Texture->Width;
     u32 TexHeight = Texture->Height;
+
+    __m128 nXAxisX = _mm_set1_ps(nXAxis.x);
+    __m128 nXAxisY = _mm_set1_ps(nXAxis.y);
+    __m128 nYAxisX = _mm_set1_ps(nYAxis.x);
+    __m128 nYAxisY = _mm_set1_ps(nYAxis.y);
+    
+    __m128 OriginX = _mm_set1_ps(Origin.x);
+    __m128 OriginY = _mm_set1_ps(Origin.y);
+
+    __m128 TexWidth_4x = _mm_set1_ps((f32)(TexWidth - 2));
+    __m128 TexHeight_4x = _mm_set1_ps((f32)(TexHeight - 2));
+    
+    __m128 TexelAr = _mm_setzero_ps();
+    __m128 TexelAg = _mm_setzero_ps();
+    __m128 TexelAb = _mm_setzero_ps();
+    __m128 TexelAa = _mm_setzero_ps();
+
+    __m128 TexelBr = _mm_setzero_ps();
+    __m128 TexelBg = _mm_setzero_ps();
+    __m128 TexelBb = _mm_setzero_ps();
+    __m128 TexelBa = _mm_setzero_ps();
+
+    __m128 TexelCr = _mm_setzero_ps();
+    __m128 TexelCg = _mm_setzero_ps();
+    __m128 TexelCb = _mm_setzero_ps();
+    __m128 TexelCa = _mm_setzero_ps();
+
+    __m128 TexelDr = _mm_setzero_ps();
+    __m128 TexelDg = _mm_setzero_ps();
+    __m128 TexelDb = _mm_setzero_ps();
+    __m128 TexelDa = _mm_setzero_ps();
+
+    __m128 Pixelr = _mm_setzero_ps();
+    __m128 Pixelg = _mm_setzero_ps();
+    __m128 Pixelb = _mm_setzero_ps();
+    __m128 Pixela = _mm_setzero_ps();
+
+    __m128i Mask_0xFF = _mm_set1_epi32(0xFF);
+                    
+    __m128i RedShift = _mm_set_epi32(0,0,0,16);
+    __m128i GreenShift = _mm_set_epi32(0,0,0,8);
+    __m128i BlueShift = _mm_set_epi32(0,0,0,0);
+    __m128i AlphaShift = _mm_set_epi32(0,0,0,24);
+                        
+    __m128 Inv255 = _mm_set1_ps(1.0f/255.0f);
+    __m128 One255 = _mm_set1_ps(255.0f);
+    __m128 One = _mm_set1_ps(1.0f);
+    __m128 Zero = _mm_set1_ps(0.0f);
+
+    u32 *PixelPtr = 0;
+    
     BEGIN_TIMED_BLOCK(PixelHit);
     for (s32 y = MinY; y <= MaxY; ++y)
     {
-        for (s32 x = MinX; x <= MaxX; ++x)
+        
+        __m128 y_4x = _mm_set1_ps((f32) y);
+        __m128 dy = _mm_sub_ps(y_4x, OriginY);
+        for (s32 x = MinX; x <= MaxX; x+=4)
         {
-            u32 *PixelPtr = (u32 *)Destination->Bytes + y * Destination->Width + x;
+            __m128 x_4x = _mm_set_ps((f32)(x + 3),(f32)(x + 2),(f32)(x + 1),(f32)(x + 0));
             
-            //v2 PixelP = V2(x, y);
-            //v2 d = PixelP - Origin;
+            __m128 dx = _mm_sub_ps(x_4x, OriginX);
+            
+            __m128 U = _mm_add_ps(_mm_mul_ps(dx, nXAxisX),
+                                  _mm_mul_ps(dy, nXAxisY));
+            __m128 V = _mm_add_ps(_mm_mul_ps(dx, nYAxisX),
+                                  _mm_mul_ps(dy, nYAxisY));
 
-            f32 Px = (f32)x;
-            f32 Py = (f32)y;
-            f32 dx = Px - Origin.x;
-            f32 dy = Py - Origin.y;
-           
-            //r32 U = (d * XAxis) * InvXAxisLenSq;
-            //r32 V = (d * YAxis) * InvYAxisLenSq;
+#define MI(A, I) ((s32 *)&(A))[I]
+#define M(A, I) ((f32 *)&(A))[I]
 
-            f32 U = (dx * XAxis.x + dy * XAxis.y) * InvXAxisLenSq;
-            f32 V = (dx * YAxis.x + dy * YAxis.y) * InvYAxisLenSq;
+            __m128i ShouldFill;
+            
+            __m128 TexX = _mm_mul_ps(U, TexWidth_4x);
+            __m128 TexY = _mm_mul_ps(V, TexHeight_4x);
+            
+            __m128i Xi = _mm_cvttps_epi32(TexX);
+            __m128i Yi = _mm_cvttps_epi32(TexY);
 
-            if (U >= 0.0f &&
-                U <= 1.0f &&
-                V >= 0.0f &&
-                V <= 1.0f)
+            __m128 X = _mm_cvtepi32_ps(Xi);
+            __m128 Y = _mm_cvtepi32_ps(Yi);
+                
+            
+            __m128 fX = _mm_sub_ps(TexX, X);
+            __m128 fY = _mm_sub_ps(TexY, Y);
+
+            ShouldFill = _mm_and_si128(
+                _mm_castps_si128(_mm_and_ps(_mm_cmpge_ps(U, Zero), _mm_cmple_ps(U, One))),
+                _mm_castps_si128(_mm_and_ps(_mm_cmpge_ps(V, Zero), _mm_cmple_ps(V, One))));
+#if 0
+            for (s32 I = 0; I < 4; ++I)
             {
+            
+                if (M(U,I) >= 0.0f &&
+                    M(U,I) <= 1.0f &&
+                    M(V,I) >= 0.0f &&
+                    M(V,I) <= 1.0f)
+                {
+                    MI(ShouldFill, I) = 0xFFFFFFFF;
+#if 0
+                    u32 *TexelPtr = (u32 *)Texture->Bytes + MI(Yi,I) * TexWidth + MI(Xi,I);
+
+                    u32 *TexelAPtr = TexelPtr;
+                    u32 *TexelBPtr = TexelPtr + 1;
+                    u32 *TexelCPtr = TexelPtr + TexWidth;
+                    u32 *TexelDPtr = TexelPtr + TexWidth + 1;
+
+            
+                    // Unpack A B C D
+                    M(TexelAr, I) = (f32)((*TexelAPtr >> 16) & 0xFF);
+                    M(TexelAg, I) = (f32)((*TexelAPtr >> 8)  & 0xFF);
+                    M(TexelAb, I) = (f32)((*TexelAPtr >> 0)  & 0xFF);
+                    M(TexelAa, I) = (f32)((*TexelAPtr >> 24) & 0xFF);
+
+                    M(TexelBr, I) = (f32)((*TexelBPtr >> 16) & 0xFF);
+                    M(TexelBg, I) = (f32)((*TexelBPtr >> 8)  & 0xFF);
+                    M(TexelBb, I) = (f32)((*TexelBPtr >> 0)  & 0xFF);
+                    M(TexelBa, I) = (f32)((*TexelBPtr >> 24) & 0xFF);
+
+                    M(TexelCr, I) = (f32)((*TexelCPtr >> 16) & 0xFF);
+                    M(TexelCg, I) = (f32)((*TexelCPtr >> 8)  & 0xFF);
+                    M(TexelCb, I) = (f32)((*TexelCPtr >> 0)  & 0xFF);
+                    M(TexelCa, I) = (f32)((*TexelCPtr >> 24) & 0xFF);
+
+                    M(TexelDr, I) = (f32)((*TexelDPtr >> 16) & 0xFF);
+                    M(TexelDg, I) = (f32)((*TexelDPtr >> 8)  & 0xFF);
+                    M(TexelDb, I) = (f32)((*TexelDPtr >> 0)  & 0xFF);
+                    M(TexelDa, I) = (f32)((*TexelDPtr >> 24) & 0xFF);
+
+            
+                    
+                    PixelPtr = (u32 *)Destination->Bytes + y * Destination->Width + x;
+                    
+                    
+                    M(Pixelr,I) = (f32)((*(PixelPtr + I) >> 16) & 0xFF);
+                    M(Pixelg,I) = (f32)((*(PixelPtr + I) >> 8)  & 0xFF);
+                    M(Pixelb,I) = (f32)((*(PixelPtr + I) >> 0)  & 0xFF);
+                    M(Pixela,I) = (f32)((*(PixelPtr + I) >> 24) & 0xFF);
+#endif
+                }
+                else
+                {
+                    M(ShouldFill,I) = false;
+                }
+            }
+#endif
+            //Assert((U >= 0.0f) && (U <= 1.0f));
+            //Assert((V >= 0.0f) && (V <= 1.0f));
+
+            // Unpack A B C D Texel
+            // TODO Nonsense MI(Yi,0)
+            u32 *TexelPtr = (u32 *)Texture->Bytes + MI(Yi,0) * TexWidth + MI(Xi,0);
+
+            u32 *TexelAPtr = TexelPtr;
+            u32 *TexelBPtr = TexelPtr + 1;
+            u32 *TexelCPtr = TexelPtr + TexWidth;
+            u32 *TexelDPtr = TexelPtr + TexWidth + 1;
+
+            // Unapck TexelA
+            __m128i TexelAi = _mm_loadu_si128((__m128i *)TexelAPtr);
+
+            __m128i TexelAri = _mm_srl_epi32(TexelAi, RedShift);
+            __m128i TexelAgi = _mm_srl_epi32(TexelAi, GreenShift);
+            __m128i TexelAbi = _mm_srl_epi32(TexelAi, BlueShift);
+            __m128i TexelAai = _mm_srl_epi32(TexelAi, AlphaShift);
+
+            TexelAri = _mm_and_si128(TexelAri, Mask_0xFF);
+            TexelAgi = _mm_and_si128(TexelAgi, Mask_0xFF);
+            TexelAbi = _mm_and_si128(TexelAbi, Mask_0xFF);
+            TexelAai = _mm_and_si128(TexelAai, Mask_0xFF);
+
+            TexelAr = _mm_cvtepi32_ps(TexelAri);
+            TexelAg = _mm_cvtepi32_ps(TexelAgi);
+            TexelAb = _mm_cvtepi32_ps(TexelAbi);
+            TexelAa = _mm_cvtepi32_ps(TexelAai);
+
+            // Unapck TexelB
+            __m128i TexelBi = _mm_loadu_si128((__m128i *)TexelBPtr);
+
+            __m128i TexelBri = _mm_srl_epi32(TexelBi, RedShift);
+            __m128i TexelBgi = _mm_srl_epi32(TexelBi, GreenShift);
+            __m128i TexelBbi = _mm_srl_epi32(TexelBi, BlueShift);
+            __m128i TexelBai = _mm_srl_epi32(TexelBi, AlphaShift);
+
+            TexelBri = _mm_and_si128(TexelBri, Mask_0xFF);
+            TexelBgi = _mm_and_si128(TexelBgi, Mask_0xFF);
+            TexelBbi = _mm_and_si128(TexelBbi, Mask_0xFF);
+            TexelBai = _mm_and_si128(TexelBai, Mask_0xFF);
+
+            TexelBr = _mm_cvtepi32_ps(TexelBri);
+            TexelBg = _mm_cvtepi32_ps(TexelBgi);
+            TexelBb = _mm_cvtepi32_ps(TexelBbi);
+            TexelBa = _mm_cvtepi32_ps(TexelBai);
+
+            // Unapck TexelC
+            __m128i TexelCi = _mm_loadu_si128((__m128i *)TexelCPtr);
+
+            __m128i TexelCri = _mm_srl_epi32(TexelCi, RedShift);
+            __m128i TexelCgi = _mm_srl_epi32(TexelCi, GreenShift);
+            __m128i TexelCbi = _mm_srl_epi32(TexelCi, BlueShift);
+            __m128i TexelCai = _mm_srl_epi32(TexelCi, AlphaShift);
+
+            TexelCri = _mm_and_si128(TexelCri, Mask_0xFF);
+            TexelCgi = _mm_and_si128(TexelCgi, Mask_0xFF);
+            TexelCbi = _mm_and_si128(TexelCbi, Mask_0xFF);
+            TexelCai = _mm_and_si128(TexelCai, Mask_0xFF);
+
+            TexelCr = _mm_cvtepi32_ps(TexelCri);
+            TexelCg = _mm_cvtepi32_ps(TexelCgi);
+            TexelCb = _mm_cvtepi32_ps(TexelCbi);
+            TexelCa = _mm_cvtepi32_ps(TexelCai);
+
+            // Unapck TexelD
+            __m128i TexelDi = _mm_loadu_si128((__m128i *)TexelDPtr);
+
+            __m128i TexelDri = _mm_srl_epi32(TexelDi, RedShift);
+            __m128i TexelDgi = _mm_srl_epi32(TexelDi, GreenShift);
+            __m128i TexelDbi = _mm_srl_epi32(TexelDi, BlueShift);
+            __m128i TexelDai = _mm_srl_epi32(TexelDi, AlphaShift);
+
+            TexelDri = _mm_and_si128(TexelDri, Mask_0xFF);
+            TexelDgi = _mm_and_si128(TexelDgi, Mask_0xFF);
+            TexelDbi = _mm_and_si128(TexelDbi, Mask_0xFF);
+            TexelDai = _mm_and_si128(TexelDai, Mask_0xFF);
+
+            TexelDr = _mm_cvtepi32_ps(TexelDri);
+            TexelDg = _mm_cvtepi32_ps(TexelDgi);
+            TexelDb = _mm_cvtepi32_ps(TexelDbi);
+            TexelDa = _mm_cvtepi32_ps(TexelDai);
+
+            // Unpack Destination Pixel
+            PixelPtr = (u32 *)Destination->Bytes + y * Destination->Width + x;
+            __m128i Pixeli = _mm_loadu_si128((__m128i *)PixelPtr);
+
+            __m128i Pixelri = _mm_srl_epi32(Pixeli, RedShift);
+            __m128i Pixelgi = _mm_srl_epi32(Pixeli, GreenShift);
+            __m128i Pixelbi = _mm_srl_epi32(Pixeli, BlueShift);
+            __m128i Pixelai = _mm_srl_epi32(Pixeli, AlphaShift);
+
+            Pixelri = _mm_and_si128(Pixelri, Mask_0xFF);
+            Pixelgi = _mm_and_si128(Pixelgi, Mask_0xFF);
+            Pixelbi = _mm_and_si128(Pixelbi, Mask_0xFF);
+            Pixelai = _mm_and_si128(Pixelai, Mask_0xFF);
+
+            Pixelr = _mm_cvtepi32_ps(Pixelri);
+            Pixelg = _mm_cvtepi32_ps(Pixelgi);
+            Pixelb = _mm_cvtepi32_ps(Pixelbi);
+            Pixela = _mm_cvtepi32_ps(Pixelai);
                 
-                //Assert((U >= 0.0f) && (U <= 1.0f));
-                //Assert((V >= 0.0f) && (V <= 1.0f));
+            // SRGBA255 To Linear space
+            TexelAr = _mm_mul_ps(TexelAr, Inv255);
+            TexelAg = _mm_mul_ps(TexelAg, Inv255);
+            TexelAb = _mm_mul_ps(TexelAb, Inv255);
+            TexelAa = _mm_mul_ps(TexelAa, Inv255);
+
+            TexelBr = _mm_mul_ps(TexelBr, Inv255);
+            TexelBg = _mm_mul_ps(TexelBg, Inv255);
+            TexelBb = _mm_mul_ps(TexelBb, Inv255);
+            TexelBa = _mm_mul_ps(TexelBa, Inv255);
+
+            TexelCr = _mm_mul_ps(TexelCr, Inv255);
+            TexelCg = _mm_mul_ps(TexelCg, Inv255);
+            TexelCb = _mm_mul_ps(TexelCb, Inv255);
+            TexelCa = _mm_mul_ps(TexelCa, Inv255);
+
+            TexelDr = _mm_mul_ps(TexelDr, Inv255);
+            TexelDg = _mm_mul_ps(TexelDg, Inv255);
+            TexelDb = _mm_mul_ps(TexelDb, Inv255);
+            TexelDa = _mm_mul_ps(TexelDa, Inv255);
+
+            TexelAr = _mm_mul_ps(TexelAr, TexelAr);
+            TexelAg = _mm_mul_ps(TexelAg, TexelAg);
+            TexelAb = _mm_mul_ps(TexelAb, TexelAb);
+
+            TexelBr = _mm_mul_ps(TexelBr, TexelBr);
+            TexelBg = _mm_mul_ps(TexelBg, TexelBg);
+            TexelBb = _mm_mul_ps(TexelBb, TexelBb);
+
+            TexelCr = _mm_mul_ps(TexelCr, TexelCr);
+            TexelCg = _mm_mul_ps(TexelCg, TexelCg);
+            TexelCb = _mm_mul_ps(TexelCb, TexelCb);
+
+            TexelDr = _mm_mul_ps(TexelDr, TexelDr);
+            TexelDg = _mm_mul_ps(TexelDg, TexelDg);
+            TexelDb = _mm_mul_ps(TexelDb, TexelDb);
                 
-                f32 TexX = U * (f32)(TexWidth - 2);
-                f32 TexY = V * (f32)(TexHeight - 2);
-
-                u32 X = (u32)TexX;
-                u32 Y = (u32)TexY;
-
-                f32 fX = TexX - (f32)X;
-                f32 fY = TexY - (f32)Y;
+            // Lerp A B C D
+            __m128 ifX = _mm_sub_ps(One, fX);
+            __m128 ifY = _mm_sub_ps(One, fY);
                 
-                u32 *TexelPtr = (u32 *)Texture->Bytes + Y * TexWidth + X;
-
-                u32 *TexelAPtr = TexelPtr;
-                u32 *TexelBPtr = TexelPtr + 1;
-                u32 *TexelCPtr = TexelPtr + TexWidth;
-                u32 *TexelDPtr = TexelPtr + TexWidth + 1;
-
-                //v4 TexelA = UnpackBGRA(TexelAPtr);
-                //v4 TexelB = UnpackBGRA(TexelBPtr);
-                //v4 TexelC = UnpackBGRA(TexelCPtr);
-                //v4 TexelD = UnpackBGRA(TexelDPtr);
-                // Unpack A B C D
-                f32 TexelAr = (f32)((*TexelAPtr >> 16) & 0xFF);
-                f32 TexelAg = (f32)((*TexelAPtr >> 8)  & 0xFF);
-                f32 TexelAb = (f32)((*TexelAPtr >> 0)  & 0xFF);
-                f32 TexelAa = (f32)((*TexelAPtr >> 24) & 0xFF);
-
-                f32 TexelBr = (f32)((*TexelBPtr >> 16) & 0xFF);
-                f32 TexelBg = (f32)((*TexelBPtr >> 8)  & 0xFF);
-                f32 TexelBb = (f32)((*TexelBPtr >> 0)  & 0xFF);
-                f32 TexelBa = (f32)((*TexelBPtr >> 24) & 0xFF);
-
-                f32 TexelCr = (f32)((*TexelCPtr >> 16) & 0xFF);
-                f32 TexelCg = (f32)((*TexelCPtr >> 8)  & 0xFF);
-                f32 TexelCb = (f32)((*TexelCPtr >> 0)  & 0xFF);
-                f32 TexelCa = (f32)((*TexelCPtr >> 24) & 0xFF);
-
-                f32 TexelDr = (f32)((*TexelDPtr >> 16) & 0xFF);
-                f32 TexelDg = (f32)((*TexelDPtr >> 8)  & 0xFF);
-                f32 TexelDb = (f32)((*TexelDPtr >> 0)  & 0xFF);
-                f32 TexelDa = (f32)((*TexelDPtr >> 24) & 0xFF);
-
-                //TexelA = SRGBA255ToLinear1(TexelA);
-                //TexelB = SRGBA255ToLinear1(TexelB);
-                //TexelC = SRGBA255ToLinear1(TexelC);
-                //TexelD = SRGBA255ToLinear1(TexelD);
-                // SRGBA255 To Linear space
-                f32 Inv255 = 1.0f/255.0f;
-
-                TexelAr *= Inv255;
-                TexelAg *= Inv255;
-                TexelAb *= Inv255;
-                TexelAa *= Inv255;
-
-                TexelBr *= Inv255;
-                TexelBg *= Inv255;
-                TexelBb *= Inv255;
-                TexelBa *= Inv255;
-
-                TexelCr *= Inv255;
-                TexelCg *= Inv255;
-                TexelCb *= Inv255;
-                TexelCa *= Inv255;
-
-                TexelDr *= Inv255;
-                TexelDg *= Inv255;
-                TexelDb *= Inv255;
-                TexelDa *= Inv255;
-
-                TexelAr = Square(TexelAr);
-                TexelAg = Square(TexelAg);
-                TexelAb = Square(TexelAb);
-
-                TexelBr = Square(TexelBr);
-                TexelBg = Square(TexelBg);
-                TexelBb = Square(TexelBb);
-
-                TexelCr = Square(TexelCr);
-                TexelCg = Square(TexelCg);
-                TexelCb = Square(TexelCb);
-
-                TexelDr = Square(TexelDr);
-                TexelDg = Square(TexelDg);
-                TexelDb = Square(TexelDb);
+            __m128 LerpABr = _mm_add_ps(_mm_mul_ps(ifX, TexelAr), _mm_mul_ps(fX, TexelBr));
+            __m128 LerpABg = _mm_add_ps(_mm_mul_ps(ifX, TexelAg), _mm_mul_ps(fX, TexelBg));
+            __m128 LerpABb = _mm_add_ps(_mm_mul_ps(ifX, TexelAb), _mm_mul_ps(fX, TexelBb));
+            __m128 LerpABa = _mm_add_ps(_mm_mul_ps(ifX, TexelAa), _mm_mul_ps(fX, TexelBa));
                 
-                
+            __m128 LerpCDr = _mm_add_ps(_mm_mul_ps(ifX, TexelCr), _mm_mul_ps(fX, TexelDr));
+            __m128 LerpCDg = _mm_add_ps(_mm_mul_ps(ifX, TexelCg), _mm_mul_ps(fX, TexelDg));
+            __m128 LerpCDb = _mm_add_ps(_mm_mul_ps(ifX, TexelCb), _mm_mul_ps(fX, TexelDb));
+            __m128 LerpCDa = _mm_add_ps(_mm_mul_ps(ifX, TexelCa), _mm_mul_ps(fX, TexelDa));
 
-                //             v4 Texel = Lerp(Lerp(TexelA, fX, TexelB), fY,
-                //              Lerp(TexelC, fX, TexelD));
-                // Lerp A B C D
-                f32 LerpABr = (1.0f - fX) * TexelAr + fX * TexelBr;
-                f32 LerpABg = (1.0f - fX) * TexelAg + fX * TexelBg;
-                f32 LerpABb = (1.0f - fX) * TexelAb + fX * TexelBb;
-                f32 LerpABa = (1.0f - fX) * TexelAa + fX * TexelBa;
-                
-                f32 LerpCDr = (1.0f - fX) * TexelCr + fX * TexelDr;
-                f32 LerpCDg = (1.0f - fX) * TexelCg + fX * TexelDg;
-                f32 LerpCDb = (1.0f - fX) * TexelCb + fX * TexelDb;
-                f32 LerpCDa = (1.0f - fX) * TexelCa + fX * TexelDa;
-
-                f32 Texelr = (1.0f - fY) * LerpABr + fY * LerpCDr;
-                f32 Texelg = (1.0f - fY) * LerpABg + fY * LerpCDg;
-                f32 Texelb = (1.0f - fY) * LerpABb + fY * LerpCDb;
-                f32 Texela = (1.0f - fY) * LerpABa + fY * LerpCDa;
+            __m128 Texelr = _mm_add_ps(_mm_mul_ps(ifY, LerpABr), _mm_mul_ps(fY, LerpCDr));
+            __m128 Texelg = _mm_add_ps(_mm_mul_ps(ifY, LerpABg), _mm_mul_ps(fY, LerpCDg));
+            __m128 Texelb = _mm_add_ps(_mm_mul_ps(ifY, LerpABb), _mm_mul_ps(fY, LerpCDb));
+            __m128 Texela = _mm_add_ps(_mm_mul_ps(ifY, LerpABa), _mm_mul_ps(fY, LerpCDa));
                                 
-                //Texel = Hadamard(Texel, Color);
+            //Texel = Hadamard(Texel, Color);
+            
+            Pixelr = _mm_mul_ps(Pixelr, Inv255);
+            Pixelg = _mm_mul_ps(Pixelg, Inv255);
+            Pixelb = _mm_mul_ps(Pixelb, Inv255);
+            Pixela = _mm_mul_ps(Pixela, Inv255);
 
-                //v4 Pixel = UnpackBGRA(PixelPtr);
-                //Pixel = SRGBA255ToLinear1(Pixel);
-                f32 Pixelr = (f32)((*PixelPtr >> 16) & 0xFF);
-                f32 Pixelg = (f32)((*PixelPtr >> 8)  & 0xFF);
-                f32 Pixelb = (f32)((*PixelPtr >> 0)  & 0xFF);
-                f32 Pixela = (f32)((*PixelPtr >> 24) & 0xFF);
+            Pixelr =  _mm_mul_ps(Pixelr, Pixelr);
+            Pixelg =  _mm_mul_ps(Pixelg, Pixelg);
+            Pixelb =  _mm_mul_ps(Pixelb, Pixelb);
 
-                Pixelr *= Inv255;
-                Pixelg *= Inv255;
-                Pixelb *= Inv255;
-                Pixela *= Inv255;
-
-                Pixelr = Square(Pixelr);
-                Pixelg = Square(Pixelg);
-                Pixelb = Square(Pixelb);
-
+            //v4 Blended = InvA * Pixel + Texel;
+            __m128 InvA = _mm_sub_ps(One, Texela);
+            __m128 Blendedr = _mm_add_ps(_mm_mul_ps(InvA, Pixelr), Texelr);
+            __m128 Blendedg = _mm_add_ps(_mm_mul_ps(InvA, Pixelg), Texelg);
+            __m128 Blendedb = _mm_add_ps(_mm_mul_ps(InvA, Pixelb), Texelb);
+            __m128 Blendeda = _mm_add_ps(_mm_mul_ps(InvA, Pixela), Texela);
                 
-                f32 InvA = 1.0f - Texela;
-                //v4 Blended = InvA * Pixel + Texel;
-                f32 Blendedr = InvA * Pixelr + Texelr;
-                f32 Blendedg = InvA * Pixelg + Texelg;
-                f32 Blendedb = InvA * Pixelb + Texelb;
-                f32 Blendeda = InvA * Pixela + Texela;
+            //Blended = Linear1ToSRGBA255(Blended);
                 
-                //Blended = Linear1ToSRGBA255(Blended);
-                f32 One255 = 255.0f;
-                Blendedr = One255 * SquareRoot(Blendedr);
-                Blendedg = One255 * SquareRoot(Blendedg);
-                Blendedb = One255 * SquareRoot(Blendedb);
-                Blendeda = One255 * Blendeda;
+            Blendedr = _mm_mul_ps(One255, _mm_sqrt_ps(Blendedr));
+            Blendedg = _mm_mul_ps(One255, _mm_sqrt_ps(Blendedg));
+            Blendedb = _mm_mul_ps(One255, _mm_sqrt_ps(Blendedb));
+            Blendeda = _mm_mul_ps(One255, Blendeda);
 
-                //*PixelPtr = PackBGRA(Blended);
-                        
-                *PixelPtr = (
-                    ((u32)Blendedr << 16) |
-                    ((u32)Blendedg << 8)  |
-                    ((u32)Blendedb << 0)  |
-                    ((u32)Blendeda << 24));
+            //*PixelPtr = PackBGRA(Blended);
+#if 0
+            for (s32 I = 0; I < 4; ++I)
+            {
+                if(M(ShouldFill,I))
+                {
+                    *(PixelPtr + I) = (
+                        ((u32)M(Blendedr,I) << 16) |
+                        ((u32)M(Blendedg,I) << 8)  |
+                        ((u32)M(Blendedb,I) << 0)  |
+                        ((u32)M(Blendeda,I) << 24));
+                }
 
             }
-        } 
+#else
+            __m128i Blendedri = _mm_cvttps_epi32(Blendedr);
+            __m128i Blendedgi = _mm_cvttps_epi32(Blendedg);
+            __m128i Blendedbi = _mm_cvttps_epi32(Blendedb);
+            __m128i Blendedai = _mm_cvttps_epi32(Blendeda);
+
+            Blendedri = _mm_sll_epi32(Blendedri, RedShift);
+            Blendedgi = _mm_sll_epi32(Blendedgi, GreenShift);
+            Blendedbi = _mm_sll_epi32(Blendedbi, BlueShift);
+            Blendedai = _mm_sll_epi32(Blendedai, AlphaShift);
+
+            __m128i Blended = _mm_or_si128(
+                _mm_or_si128(Blendedri, Blendedgi),
+                _mm_or_si128(Blendedbi, Blendedai));
+#if 1
+            //TODO Align memory
+            if ((u64)PixelPtr & 15)
+                _mm_store_si128((__m128i *)PixelPtr, Blended);
+#else
+            _mm_maskmoveu_si128(Blended, ShouldFill, (char *)PixelPtr);
+#endif
+#endif
+         
+        }
     }
     END_TIMED_BLOCK_COUNTED(PixelHit, ((MaxX-MinX)*(MaxY-MinY)));
         
@@ -944,7 +1139,7 @@ RenderOutput(render_group *Group, loaded_bitmap *Target,
 
     for (u32 Address = 0; Address < Group->PushBufferSize;)
     {
-       entry_header *Header = (entry_header *)Group->PushBufferBasis + Address;
+        entry_header *Header = (entry_header *)Group->PushBufferBasis + Address;
         
         switch(Header->Type)
         {
@@ -960,7 +1155,7 @@ RenderOutput(render_group *Group, loaded_bitmap *Target,
                 v2 XAxis = (r32)Entry->Bitmap->Width * V2(1.f, 0.f);
                 v2 YAxis = (r32)Entry->Bitmap->Height * V2(0.f, 1.f);//Perp(XAxis);
                 DrawTextureQuick(Target, P, XAxis, YAxis,
-                                  Entry->Bitmap, V4(1,1,1,1));                
+                                 Entry->Bitmap, V4(1,1,1,1));                
 #endif
                 Address += sizeof(*Entry);
             } break;

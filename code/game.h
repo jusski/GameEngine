@@ -86,7 +86,7 @@ struct game_offscreen_bitmap
 
 };
 
-loaded_file ReadFileToMemory(char* FileName); 
+loaded_file ReadFileToMemory(const char* FileName); 
 typedef decltype(ReadFileToMemory) read_file_to_memory;
 
 struct game_memory
@@ -194,7 +194,7 @@ struct game_state
     r32 MetersPerPixel;
 };
 
-extern "C" void GameEngine(game_memory *Memory, game_input *Input, game_sound_output_buffer *Sound, game_offscreen_bitmap *Video);
+extern "C" void __declspec(dllexport) GameEngine(game_memory *Memory, game_input *Input, game_sound_output_buffer *Sound, game_offscreen_bitmap *Video);
 
 
 #define PushStruct(Arena, Type) (Type *)PushArray_(Arena, 1, sizeof(Type))
@@ -204,6 +204,7 @@ extern "C" void GameEngine(game_memory *Memory, game_input *Input, game_sound_ou
 internal void *
 PushArray_(memory_arena *Arena, u32 Count, u32 Size)
 {
+    Assert(Arena);
     Assert((Arena->Index += Count * Size) <= Arena->AvailableSize);
     void *Result = Arena->Memory + Arena->Index;
     Arena->Index += Count * Size;
@@ -214,6 +215,7 @@ PushArray_(memory_arena *Arena, u32 Count, u32 Size)
 internal temporary_memory
 BeginTemporaryMemory(memory_arena *Arena)
 {
+    Assert(Arena);
     temporary_memory Result = {};
 
     Result.Arena = Arena;

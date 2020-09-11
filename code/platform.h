@@ -12,7 +12,7 @@
 #define GigaBytes(Size) (MegaBytes(Size)*1024LL)
 #define BITMAP_BYTES_PER_PIXEL 4
 
-#define Assert(Statement) if(!(Statement)) {*(int *)0 = 0;}
+#define Assert(Statement) if(!(Statement)) {*(volatile int *)0 = 0;}
 #define INVALID_CODE_PATH Assert(!"InvalidCodePath")
 #define ArrayCount(Array) (sizeof(Array) / (sizeof(Array[0])))
 
@@ -58,8 +58,8 @@ typedef real32 f32;
 typedef real64 f64;
 
 #define BEGIN_TIMED_BLOCK(ID) u64 CycleCountStart_##ID = __rdtsc();
-#define END_TIMED_BLOCK(ID) GlobalMemory->DebugCycleCounters[DebugCycleCounterType_##ID].Cycles += __rdtsc() - CycleCountStart_##ID; ++GlobalMemory->DebugCycleCounters[DebugCycleCounterType_##ID].Hits;
-#define END_TIMED_BLOCK_COUNTED(ID, Count) GlobalMemory->DebugCycleCounters[DebugCycleCounterType_##ID].Cycles += __rdtsc() - CycleCountStart_##ID; GlobalMemory->DebugCycleCounters[DebugCycleCounterType_##ID].Hits += (Count);
+#define END_TIMED_BLOCK(ID) GlobalMemory->DebugCycleCounters[DebugCycleCounterType_##ID].Cycles += __rdtsc() - CycleCountStart_##ID; ++GlobalMemory->DebugCycleCounters[DebugCycleCounterType_##ID].Hits;GlobalMemory->DebugCycleCounters[DebugCycleCounterType_##ID].Name = __FUNCTION__;
+#define END_TIMED_BLOCK_COUNTED(ID, Count) GlobalMemory->DebugCycleCounters[DebugCycleCounterType_##ID].Cycles += __rdtsc() - CycleCountStart_##ID; GlobalMemory->DebugCycleCounters[DebugCycleCounterType_##ID].Hits += (Count);GlobalMemory->DebugCycleCounters[DebugCycleCounterType_##ID].Name = __FUNCTION__;
 
 #define TIMED_FUNCTION_(Name, Counter) timed_block DebugCounter_(Name, Counter);
 #define TIMED_FUNCTION() TIMED_FUNCTION_(__FUNCTION__, __COUNTER__)
@@ -76,20 +76,21 @@ struct debug_cycle_counter
 {
     u64 Cycles;
     u32 Hits;
-    char *Name;
+    const char *Name;
 };
 
 
-debug_cycle_counter DebugCycles[];
+debug_cycle_counter DebugCycles[10];
 
 struct timed_block
 {
     u32 Index;
     u64 StartCycles;
-    char *Name;
-    timed_block(char *Name, u32 DebugIndex)
+    const char *Name;
+    timed_block(const char *FunctionName, u32 DebugIndex)
     {
         Index = DebugIndex;
+        Name = FunctionName;
         StartCycles = __rdtsc();
     }
     ~timed_block()
@@ -197,7 +198,7 @@ struct rectangle2
     v2 Max;
 };
 
-inline v2
+internal inline v2
 V2(r32 x, r32 y)
 {
     v2 Result = {(r32)x, (r32)y};
@@ -206,7 +207,7 @@ V2(r32 x, r32 y)
 }
 
 
-inline v2
+internal inline v2
 V2(s32 x, s32 y)
 {
     v2 Result = {(r32)x, (r32)y};
@@ -215,7 +216,7 @@ V2(s32 x, s32 y)
 }
 
 
-inline v2
+internal inline v2
 V2(u32 x, u32 y)
 {
     v2 Result = {(r32)x, (r32)y};
@@ -223,7 +224,7 @@ V2(u32 x, u32 y)
     return(Result);
 }
 
-inline v3
+internal inline v3
 V3(s32 x, s32 y, s32 z)
 {
     v3 Result = {(r32)x, (r32)y, (r32)z};
@@ -231,7 +232,7 @@ V3(s32 x, s32 y, s32 z)
     return(Result);
 }
 
-inline v3
+internal inline v3
 V3(r32 x, r32 y, r32 z)
 {
     v3 Result = {(r32)x, (r32)y, (r32)z};
@@ -240,7 +241,7 @@ V3(r32 x, r32 y, r32 z)
 }
 
 
-inline v3
+internal inline v3
 V3(u32 x, u32 y, u32 z)
 {
     v3 Result = {(r32)x, (r32)y, (r32)z};
@@ -250,7 +251,7 @@ V3(u32 x, u32 y, u32 z)
 
 
 
-inline v4
+internal inline v4
 V4(s32 x, s32 y, s32 z, s32 w)
 {
     v4 Result = {(r32)x, (r32)y, (r32) z, (r32) w};
@@ -258,7 +259,7 @@ V4(s32 x, s32 y, s32 z, s32 w)
     return(Result);
 }
 
-inline v4
+internal inline v4
 V4(u32 x, u32 y, u32 z, u32 w)
 {
     v4 Result = {(r32)x, (r32)y, (r32) z, (r32) w};
@@ -266,7 +267,7 @@ V4(u32 x, u32 y, u32 z, u32 w)
     return(Result);
 }
 
-inline v4
+internal inline v4
 V4(r32 x, r32 y, r32 z, r32 w)
 {
     v4 Result = {(r32)x, (r32)y, (r32) z, (r32) w};
@@ -274,7 +275,7 @@ V4(r32 x, r32 y, r32 z, r32 w)
     return(Result);
 }
 
-inline v2
+internal inline v2
 operator+(v2 a, v2 b)
 {
     v2 Result;
@@ -284,7 +285,7 @@ operator+(v2 a, v2 b)
     return(Result);
 }
 
-inline v2
+internal inline v2
 operator*(v2 a, r32 c)
 {
     v2 Result;
@@ -294,7 +295,7 @@ operator*(v2 a, r32 c)
     return(Result);
 }
 
-inline v2
+internal inline v2
 operator*(r32 c, v2 a)
 {
     v2 Result;
@@ -304,7 +305,7 @@ operator*(r32 c, v2 a)
     return(Result);
 }
 
-inline v2
+internal inline v2
 operator-(v2 a, v2 b)
 {
     v2 Result;
@@ -314,7 +315,7 @@ operator-(v2 a, v2 b)
     return(Result);
 }
 
-inline v2&
+internal inline v2&
 operator-=(v2 &a, v2 b)
 {
     a.x -= b.x;
@@ -322,7 +323,7 @@ operator-=(v2 &a, v2 b)
     return(a);
 }
 
-inline v2&
+internal inline v2&
 operator+=(v2 &a, v2 b)
 {
     a.x += b.x;
@@ -330,7 +331,7 @@ operator+=(v2 &a, v2 b)
     return a;
 }
 
-inline v2&
+internal inline v2&
 operator*=(v2 &a, r32 c)
 {
     a.x = c * a.x;
@@ -339,7 +340,7 @@ operator*=(v2 &a, r32 c)
     return(a);
 }
 
-inline v2
+internal inline v2
 operator-(v2 a)
 {
     v2 Result;
@@ -349,7 +350,7 @@ operator-(v2 a)
     return(Result);
 }
 
-inline r32
+internal inline r32
 operator*(v2 a, v2 b)
 {
     r32 Result;
@@ -358,7 +359,7 @@ operator*(v2 a, v2 b)
     return(Result);
 }
 
-inline v3
+internal inline v3
 operator+(v3 a, v3 b)
 {
     v3 Result;
@@ -369,7 +370,7 @@ operator+(v3 a, v3 b)
     return(Result);
 }
 
-inline v3
+internal inline v3
 operator-(v3 a, v3 b)
 {
     v3 Result;
@@ -380,7 +381,7 @@ operator-(v3 a, v3 b)
     return(Result);
 }
 
-inline v3
+internal inline v3
 operator*(r32 c, v3 a)
 {
     v3 Result;
@@ -391,7 +392,7 @@ operator*(r32 c, v3 a)
     return(Result);
 }
 
-inline v3
+internal inline v3
 operator*(v3 a, r32 c)
 {
     v3 Result;
@@ -402,7 +403,7 @@ operator*(v3 a, r32 c)
     return(Result);
 }
 
-inline v3&
+internal inline v3&
 operator*=(v3 &a, r32 c)
 {
     a.x = c * a.x;
@@ -412,7 +413,7 @@ operator*=(v3 &a, r32 c)
     return(a);
 }
 
-inline v3&
+internal inline v3&
 operator+=(v3 &a, v3 &b)
 {
     a.x += b.x;
@@ -422,7 +423,7 @@ operator+=(v3 &a, v3 &b)
     return(a);
 }
 
-inline v4
+internal inline v4
 operator+(v4 a, v4 b)
 {
     v4 Result;
@@ -434,7 +435,7 @@ operator+(v4 a, v4 b)
     return(Result);
 }
 
-inline v4
+internal inline v4
 operator-(v4 a, v4 b)
 {
     v4 Result;
@@ -446,7 +447,7 @@ operator-(v4 a, v4 b)
     return(Result);
 }
 
-inline v4
+internal inline v4
 operator*(r32 c, v4 a)
 {
     v4 Result;
@@ -458,7 +459,7 @@ operator*(r32 c, v4 a)
     return(Result);
 }
 
-inline v4
+internal inline v4
 operator*(v4 a, r32 c)
 {
     v4 Result;
@@ -470,7 +471,7 @@ operator*(v4 a, r32 c)
     return(Result);
 }
 
-inline v4&
+internal inline v4&
 operator*=(v4 &a, r32 c)
 {
     a.x = c * a.x;
@@ -481,7 +482,7 @@ operator*=(v4 &a, r32 c)
     return(a);
 }
 
-inline v4&
+internal inline v4&
 operator+=(v4 &a, v4 &b)
 {
     a.x += b.x;
@@ -492,7 +493,7 @@ operator+=(v4 &a, v4 &b)
     return(a);
 }
 
-inline void
+internal inline void
 ZeroMemory(u32 Size, void *Ptr)
 {
     u8 *byte = (u8 *)Ptr;
