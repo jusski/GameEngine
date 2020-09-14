@@ -871,7 +871,7 @@ GameEngine(game_memory *Memory, game_input *Input,
     //DrawBitmap(Video, &GameState->PyramidNormal, ScreenCenter.x + 60, ScreenCenter.y + 60);
     //DrawBitmap(Video, TranState->Sky.LOD[0], 0, 0);
     //DrawBitmap(Video, TranState->Ground.LOD[0], 0, 110);
-    DrawGroundBuffers(Video, GameState, TranState, GameState->CameraPosition);
+    //DrawGroundBuffers(Video, GameState, TranState, GameState->CameraPosition);
 
 
     EndSim(SimRegion, GameState);
