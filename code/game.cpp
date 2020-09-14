@@ -105,9 +105,7 @@ LoadBitmap(read_file_to_memory ReadFileToMemory, const char *FileName)
 
             v4 Texel = V4(R, G, B, A);
             Texel = SRGBA255ToLinear1(Texel);
-            Texel.r *= Texel.a;
-            Texel.g *= Texel.a;
-            Texel.b *= Texel.a;
+            Texel.rgb *= Texel.a;
             Texel = Linear1ToSRGBA255(Texel);
 
             *Pixel++ = PackBGRA(Texel);
@@ -584,7 +582,7 @@ InitializeTranState(transient_state *TranState, game_state *GameState,
                     Memory->TransientStorageSize - sizeof(transient_state),
                     (u8 *)Memory->TransientStorage + sizeof(transient_state));
 
-    TranState->GroundBufferCount = 32;
+    TranState->GroundBufferCount = 64;
     TranState->GroundBuffers = PushArray(&TranState->Arena, TranState->GroundBufferCount, ground_buffer);
 
     u32 GroundWidth = GameState->TileMap.TileSizeInPixels;
@@ -670,7 +668,6 @@ GameEngine(game_memory *Memory, game_input *Input,
 {
     GlobalMemory = Memory;
 
-    BEGIN_TIMED_BLOCK(GameEngine);
     
     loaded_bitmap Video_ = {};
     loaded_bitmap *Video = &Video_;
@@ -863,22 +860,17 @@ GameEngine(game_memory *Memory, game_input *Input,
                     ScreenPosition);
     
 #endif
+    DrawGroundBuffers(Video, GameState, TranState, GameState->CameraPosition);
     RenderOutput(RenderGroup, Video, GameState->PixelsPerMeter);
 
     //DrawTilesOutline(Video, GameState, GameState->CameraPosition);
-
-    //DrawBitmap(Video, &GameState->SphereNormal, ScreenCenter.x - 60, ScreenCenter.y + 60);
-    //DrawBitmap(Video, &GameState->PyramidNormal, ScreenCenter.x + 60, ScreenCenter.y + 60);
-    //DrawBitmap(Video, TranState->Sky.LOD[0], 0, 0);
-    //DrawBitmap(Video, TranState->Ground.LOD[0], 0, 110);
-    //DrawGroundBuffers(Video, GameState, TranState, GameState->CameraPosition);
 
 
     EndSim(SimRegion, GameState);
     EndTemporaryMemory(&SimMemory);
     EndTemporaryMemory(&RenderMemory);
 
-    END_TIMED_BLOCK(GameEngine);
+
     TIMED_FUNCTION();
 }
 

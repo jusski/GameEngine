@@ -62,7 +62,6 @@ AddRadiusTo(rectangle2 A, r32 Width, r32 Height)
     return(Result);
 }
 
-
 internal inline bool32
 IsInRectangle(rectangle2 &Rectangle, v2 &P)
 {
@@ -226,6 +225,34 @@ Hadamard(v4 A, v4 B)
                  A.y * B.y,
                  A.z * B.z,
                  A.w * B.w};
+
+    return(Result);
+}
+
+internal inline rectangle2i
+Intersection(rectangle2i A, rectangle2i B)
+{
+    rectangle2i Result;
+
+    Result.MinX = Maximum(A.MinX, B.MinX);
+    Result.MaxX = Minimum(A.MaxX, B.MaxX);
+
+    Result.MinY = Maximum(A.MinY, B.MinY);
+    Result.MaxY = Minimum(A.MaxY, B.MaxY);
+    
+    return(Result);
+}
+
+internal inline rectangle2i
+Union(rectangle2i A, rectangle2i B)
+{
+    rectangle2i Result;
+
+    Result.MinX = Minimum(A.MinX, B.MinX);
+    Result.MaxX = Maximum(A.MaxX, B.MaxX);
+
+    Result.MinY = Minimum(A.MinY, B.MinY);
+    Result.MaxY = Maximum(A.MaxY, B.MaxY);
 
     return(Result);
 }

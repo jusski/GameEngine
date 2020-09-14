@@ -1,5 +1,7 @@
 #pragma once
-
+//#pragma clang diagnostic ignored "-Wunused-variable"
+//#pragma clang diagnostic ignored "-Wmissing-braces"
+//#pragma clang diagnostic ignored "-Wunused-function"
 #include "platform.h"
 #include "intrinsic.h"
 #include "math.h"

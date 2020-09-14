@@ -57,6 +57,7 @@ typedef real64 r64;
 typedef real32 f32;
 typedef real64 f64;
 
+//TODO Put Compiler/Memory barier?
 #define BEGIN_TIMED_BLOCK(ID) u64 CycleCountStart_##ID = __rdtsc();
 #define END_TIMED_BLOCK(ID) GlobalMemory->DebugCycleCounters[DebugCycleCounterType_##ID].Cycles += __rdtsc() - CycleCountStart_##ID; ++GlobalMemory->DebugCycleCounters[DebugCycleCounterType_##ID].Hits;GlobalMemory->DebugCycleCounters[DebugCycleCounterType_##ID].Name = __FUNCTION__;
 #define END_TIMED_BLOCK_COUNTED(ID, Count) GlobalMemory->DebugCycleCounters[DebugCycleCounterType_##ID].Cycles += __rdtsc() - CycleCountStart_##ID; GlobalMemory->DebugCycleCounters[DebugCycleCounterType_##ID].Hits += (Count);GlobalMemory->DebugCycleCounters[DebugCycleCounterType_##ID].Name = __FUNCTION__;
@@ -102,7 +103,7 @@ struct timed_block
 };
 
 #pragma pack(push, 1)
-struct bitmap_format
+struct alignas(1) bitmap_format
 {
     u16 FileType;
     u32 FileSize;
@@ -126,6 +127,16 @@ struct bitmap_format
     u32 AlphaMask;
 };
 #pragma pack(pop)
+
+struct v2i
+{
+    s32 X, Y;
+};
+
+struct v3i
+{
+    s32 X, Y, Z;
+};
 
 struct v2
 {
@@ -194,8 +205,43 @@ union v4
 
 struct rectangle2
 {
-    v2 Min;
-    v2 Max;
+    union
+    {
+        v2 Min;
+        struct
+        {
+            f32 MinX, MinY;
+        };
+    };
+    union
+    {
+        v2 Max;
+        struct
+        {
+            f32 MaxX, MaxY;
+        };
+    };    
+};
+
+
+struct rectangle2i
+{
+    union
+    {
+        v2i Min;
+        struct
+        {
+            s32 MinX, MinY;
+        };
+    };
+    union
+    {
+        v2i Max;
+        struct
+        {
+            s32 MaxX, MaxY;
+        };
+    };
 };
 
 internal inline v2

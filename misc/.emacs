@@ -64,11 +64,11 @@
 (ido-mode t)
 
 					; Setup my find-files
-(define-key global-map "\ef" 'find-file)
+(define-key global-map "\ef" 'counsel-find-file)
 (define-key global-map "\eF" 'find-file-other-window)
 
-(global-set-key (read-kbd-macro "\eb")  'ido-switch-buffer)
-(global-set-key (read-kbd-macro "\eB")  'ido-switch-buffer-other-window)
+(global-set-key (read-kbd-macro "\eb")  'counsel-switch-buffer)
+(global-set-key (read-kbd-macro "\eB")  'counsel-switch-buffer-other-window)
 
 (defun casey-ediff-setup-windows (buffer-A buffer-B buffer-C control-buffer)
   (ediff-setup-windows-plain buffer-A buffer-B buffer-C control-buffer)
@@ -120,6 +120,7 @@
 
 					; Bright-red TODO
 (setq fixme-modes '(c++-mode c-mode emacs-lisp-mode))
+(make-face 'font-lock-important-face)
 (make-face 'font-lock-fixme-face)
 (make-face 'font-lock-note-face)
 (make-face 'font-lock-function-call-face)
@@ -128,6 +129,7 @@
 	(font-lock-add-keywords
 	 mode
 	 '(("\\<\\(TODO\\)" 1 'font-lock-fixme-face t)
+	   ("\\<\\(IMPORTANT\\)" 1 'font-lock-important-face t)
 	   ("\\<\\([A-Z_]+\\)[(),;]" 1 'font-lock-macros-face t)
 	   ("\\<\\([A-Z_]+\\) [|&]" 1 'font-lock-macros-face t)
 	   ("\\<\\(internal\\)" 1 'font-lock-macros-face t)
@@ -150,6 +152,7 @@
 
 (modify-face 'font-lock-macros-face "SteelBlue" nil nil nil nil nil nil nil)
 (modify-face 'font-lock-fixme-face "Red" nil nil t nil t nil nil)
+(modify-face 'font-lock-important-face "Yellow" nil nil t nil t nil nil)
 (modify-face 'font-lock-note-face "Dark Green" nil nil t nil t nil nil)
 (modify-face 'font-lock-function-call-face "IndianRed" nil nil nil nil nil nil nil)
 
@@ -504,9 +507,7 @@
 (define-key global-map "\em" 'make-without-asking)
 
 ; Commands
-(set-variable 'grep-command "grep -irHn ")
-(when casey-win32
-    (set-variable 'grep-command "findstr -s -n -i -l "))
+(set-variable 'grep-command "rg -n -H --no-heading --color always -e  ")
 
 ; Smooth scroll
 (setq scroll-step 3)
@@ -613,11 +614,24 @@
 (global-set-key [C-tab] 'c-indent-line-or-region)
 (define-key c++-mode-map "\C-d" 'kill-region)
 (define-key c++-mode-map "\e/" 'c-mark-function)
-(define-key c++-mode-map "\ej" 'ido-imenu-anywhere)
+;(define-key c++-mode-map "\ej" 'ido-imenu-anywhere)
+(define-key c++-mode-map "\ej" 'xref-find-definitions-other-window)
 ;(define-key c++-mode-map "\C-d" 'kill-region)
+<<<<<<< HEAD
 (global-set-key (kbd "C-.") 'exchange-point-and-mark)
+<<<<<<< HEAD
+(global-set-key (kbd "C-b") 'counsel-switch-buffer)
+=======
 (global-set-key (kbd "C-b") 'ido-switch-buffer)
-(global-set-key (kbd "C-j") 'imenu)
+<<<<<<< HEAD
+>>>>>>> dc97c15... fixup! Day 121: Rendering in Tiles
+=======
+>>>>>>> 49162ad... fixup! fixup! throw commit?
+=======
+(global-set-key (kbd "C-.") 'xref-pop-marker-stack)
+(global-set-key (kbd "C-b") 'counsel-switch-buffer)
+>>>>>>> 0f92c11... Mass Effect Day
+(global-set-key (kbd "C-j") 'counsel-imenu)
 
 (setq executable "win32_main.exe")
 
@@ -641,7 +655,23 @@
   (interactive)
   (goto-char (point-min))
   (isearch-forward))
-(global-set-key [(control /)] 'isearch-from-buffer-start)
+<<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
+(global-set-key [(control /)] 'swiper)
+=======
+(global-set-key [(control /)] 'counsel-search)
+>>>>>>> dc97c15... fixup! Day 121: Rendering in Tiles
+=======
+(global-set-key [(control /)] 'swiper)
+>>>>>>> 66a28c4... fixup! fixup! Day 121: Rendering in Tiles
+=======
+(global-set-key [(control /)] 'swiper)
+>>>>>>> 49162ad... fixup! fixup! throw commit?
+=======
+(global-set-key [(control /)] 'c-end-of-defun)
+>>>>>>> 0f92c11... Mass Effect Day
 
 (defun my/query-replace (from-string to-string &optional delimited start end)
   "Replace some occurrences of FROM-STRING with TO-STRING.  As each match is
@@ -700,4 +730,29 @@ the documentation of `query-replace'"
 
 (global-set-key [(control backspace)] 'delete-backward-word1)
 (global-set-key [(control delete)] 'delete-forward-word1)
+(global-set-key [(control s)] 'swiper)
+;; bind it to M-j
+(require 'ivy)
+(ivy-mode 1)
+(setq ivy-use-virtual-buffers t)
+(setq ivy-count-format "(%d/%d) ")
+(setq ivy-ignore-buffers '("\\` " "^\*"))
+(define-key ivy-minibuffer-map (kbd "C-w") 'ivy-next-history-element)
+(define-key ivy-minibuffer-map (kbd "C-o") 'ivy-previous-line)
+(define-key ivy-minibuffer-map (kbd "C-l") 'ivy-next-line)
+<<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+(define-key swiper-map (kbd "C-o") 'ivy-previous-line)
+(define-key swiper-map (kbd "C-l") 'ivy-next-line)
+>>>>>>> dc97c15... fixup! Day 121: Rendering in Tiles
+=======
+>>>>>>> 66a28c4... fixup! fixup! Day 121: Rendering in Tiles
+=======
+>>>>>>> 49162ad... fixup! fixup! throw commit?
+
+(ctags-global-auto-update-mode)
+(setq ctags-update-prompt-create-tags nil)
+
 (add-hook 'window-setup-hook 'post-load-stuff t)

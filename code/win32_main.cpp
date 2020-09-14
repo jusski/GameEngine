@@ -3,7 +3,7 @@
 #include "win32_main.h"
 #include <gl/gl.h>
 
-global_variable bool Running = true;
+global_variable volatile bool Running = true;
 
 global_variable win32_offscreen_bitmap GlobalBitmap = {};
 global_variable game_offscreen_bitmap Video = {};
@@ -140,7 +140,7 @@ Win32LoadGameCode(char *GameLibraryFileName)
     
     while(!CopyFile(SourceFile, TargetFile, FALSE))
     {
-        Sleep(10);
+        Sleep(1);
     }
 
     Result.Library = LoadLibraryA(TargetFile);
@@ -347,7 +347,7 @@ Win32ResizeBitmap(win32_offscreen_bitmap *Bitmap, s32 Width, s32 Height)
 internal void
 Win32UpdateWindow(HDC DeviceContext, win32_offscreen_bitmap *Bitmap, long x, long y, long Width, long Height)
 {
-#if 1
+#if 0
     //PatBlt(DeviceContext, 0, 0, 100, 100, BLACKNESS);
     StretchDIBits(DeviceContext,
                   0, 0, Width, Height,
@@ -369,7 +369,7 @@ Win32UpdateWindow(HDC DeviceContext, win32_offscreen_bitmap *Bitmap, long x, lon
 
     glBindTexture(GL_TEXTURE_2D, TextureHandle);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, Bitmap->Width, Bitmap->Height,
-                 0, GL_BGR_EXT, GL_UNSIGNED_BYTE, Bitmap->Memory);
+                 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, Bitmap->Memory);
         
     glMatrixMode(GL_TEXTURE);
     glLoadIdentity();
@@ -542,7 +542,7 @@ Win32ProcessKeyboardInput(HWND Window, win32_state *State, game_controller_input
                 bool32 WasDown =  ((Message.lParam & (1 << 30)) != 0);
                 if (IsDown)
                 {
-                    if (KeyCode == VK_F4)
+                    if (KeyCode == VK_F4 )
                     {
                         OutputDebugStringA("F4\n");
                         bool AltPressed = ((Message.lParam & (1 << 29)) !=0);
@@ -552,6 +552,10 @@ Win32ProcessKeyboardInput(HWND Window, win32_state *State, game_controller_input
                             Running = false;
                         }
                     }
+                    if (KeyCode == 'Q' )
+                    {
+                        Running = false;
+                    }
                     if (KeyCode == 'F')
                     {
                         Win32TogleFullScreen(Window);
@@ -560,22 +564,22 @@ Win32ProcessKeyboardInput(HWND Window, win32_state *State, game_controller_input
                 }
                 if (WasDown != IsDown)
                 {
-                    if (KeyCode == VK_LEFT || KeyCode == 'A')
+                    if (KeyCode == VK_LEFT || KeyCode == 'A' || KeyCode == 'K')
                     {
                         Win32ProcessButtonState(&Input->Left, IsDown);
                         OutputDebugStringA("Left\n");
                     }
-                    else if (KeyCode == VK_RIGHT || KeyCode == 'D')
+                    else if (KeyCode == VK_RIGHT || KeyCode == 'D' || KeyCode == VK_OEM_1)
                     {
                         Win32ProcessButtonState(&Input->Right, IsDown);
                         OutputDebugStringA("Right\n");
                     }
-                    else if (KeyCode == VK_UP || KeyCode == 'W')
+                    else if (KeyCode == VK_UP || KeyCode == 'W' || KeyCode == 'O')
                     {
                         Win32ProcessButtonState(&Input->Up, IsDown);
                         OutputDebugStringA("Up\n");
                     }
-                    else if (KeyCode == VK_DOWN || KeyCode == 'S')
+                    else if (KeyCode == VK_DOWN || KeyCode == 'S' || KeyCode == 'L')
                     {
                         Win32ProcessButtonState(&Input->Down, IsDown);
                         OutputDebugStringA("Down\n");
@@ -709,25 +713,9 @@ Win32ResetKeyboardTransitionCount(game_controller_input *Keyboard)
     }
 }
 
-DWORD WINAPI
-ThreadProc(LPVOID Argument)
-{
-    while(true)
-    {
-        Trace("HELLO THREAD\n");
-        Sleep(1000);
-    }
-    
-    return(0);
-}
-
 int WINAPI
 WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowCommand)
 {
-    DWORD ThreadID;
-    HANDLE ThreadHandle = CreateThread(0,0, ThreadProc, 0, 0, &ThreadID);
-    CloseHandle(ThreadHandle);
-    
     WNDCLASS WindowClass = {};
     WindowClass.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW;
     WindowClass.hInstance = Instance;
@@ -852,7 +840,7 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
                 GameCode.GameEngine(&Memory, &GameInput, &SoundData, &Video);
 
                 
-                Trace("DEBUG COUNTERS:\n");
+                
                 for (u32 Index = 0; Index < ArrayCount(Memory.DebugCycleCounters); ++Index)
                 {
                     debug_cycle_counter *Cycles = Memory.DebugCycleCounters + Index;
