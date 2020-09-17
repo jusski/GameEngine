@@ -571,11 +571,11 @@ DrawTextureSlowly(loaded_bitmap *Destination, v2 Origin,
 #include <iacaMarks.h>
 #endif
 
+//TODO IMPORTANT Align memory to 16 bytes
 internal void
 DrawTextureQuick(loaded_bitmap *Destination, v2 Origin,
                  v2 XAxis, v2 YAxis, loaded_bitmap *Texture,
                  v4 Color, rectangle2i ClipRect, bool32 Even = true)
-
 {
 
     v2 P[4];
@@ -588,7 +588,8 @@ DrawTextureQuick(loaded_bitmap *Destination, v2 Origin,
     s32 MaxX = -1;
     s32 MinY = Destination->Height;
     s32 MaxY = -1;
-    
+
+    // Get rotated texture bounds
     for (u32 i = 0 ; i < ArrayCount(P); ++i)
     {
         MinX = Minimum(MinX, Floor(P[i].x));
@@ -598,18 +599,18 @@ DrawTextureQuick(loaded_bitmap *Destination, v2 Origin,
         MaxY = Maximum(MaxY, Ceill(P[i].y));
         
     }
- 
-    
-
-    
     rectangle2i FillRect = {MinX, MinY, MaxX, MaxY};
     FillRect = Intersection(FillRect, ClipRect);
 
+    // No points to draw?
+    if (IsEmptySet(FillRect)) return;
+    
     MinX = FillRect.MinX;
     MinY = FillRect.MinY;
     MaxX = FillRect.MaxX;
     MaxY = FillRect.MaxY;
 
+    // Draw only even or odd screen lines
     if (Even == (MinY & 1) ) MinY += 1; 
 
     r32 InvXAxisLenSq = 1.0f / LengthSquared(XAxis);
@@ -881,11 +882,8 @@ DrawTextureQuick(loaded_bitmap *Destination, v2 Origin,
             dx = _mm_add_ps(dx, Four);
         }
     }
-    u32 LoopCount = 0;
-    if ((MaxX > MinX) && (MaxY > MinY))
-    {
-        LoopCount = ((MaxX-MinX+1)*(MaxY-MinY+1));
-    }
+    u32 LoopCount = ((MaxX-MinX+1)*(MaxY-MinY+1)) / 2;
+    
     END_TIMED_BLOCK_COUNTED(PixelHit, LoopCount);
 #if IACA
     IACA_END;

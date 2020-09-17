@@ -617,20 +617,9 @@
 ;(define-key c++-mode-map "\ej" 'ido-imenu-anywhere)
 (define-key c++-mode-map "\ej" 'xref-find-definitions-other-window)
 ;(define-key c++-mode-map "\C-d" 'kill-region)
-<<<<<<< HEAD
-(global-set-key (kbd "C-.") 'exchange-point-and-mark)
-<<<<<<< HEAD
+
 (global-set-key (kbd "C-b") 'counsel-switch-buffer)
-=======
-(global-set-key (kbd "C-b") 'ido-switch-buffer)
-<<<<<<< HEAD
->>>>>>> dc97c15... fixup! Day 121: Rendering in Tiles
-=======
->>>>>>> 49162ad... fixup! fixup! throw commit?
-=======
 (global-set-key (kbd "C-.") 'xref-pop-marker-stack)
-(global-set-key (kbd "C-b") 'counsel-switch-buffer)
->>>>>>> 0f92c11... Mass Effect Day
 (global-set-key (kbd "C-j") 'counsel-imenu)
 
 (setq executable "win32_main.exe")
@@ -655,23 +644,10 @@
   (interactive)
   (goto-char (point-min))
   (isearch-forward))
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-(global-set-key [(control /)] 'swiper)
-=======
-(global-set-key [(control /)] 'counsel-search)
->>>>>>> dc97c15... fixup! Day 121: Rendering in Tiles
-=======
-(global-set-key [(control /)] 'swiper)
->>>>>>> 66a28c4... fixup! fixup! Day 121: Rendering in Tiles
-=======
-(global-set-key [(control /)] 'swiper)
->>>>>>> 49162ad... fixup! fixup! throw commit?
-=======
+
+
 (global-set-key [(control /)] 'c-end-of-defun)
->>>>>>> 0f92c11... Mass Effect Day
+
 
 (defun my/query-replace (from-string to-string &optional delimited start end)
   "Replace some occurrences of FROM-STRING with TO-STRING.  As each match is
@@ -740,17 +716,7 @@ the documentation of `query-replace'"
 (define-key ivy-minibuffer-map (kbd "C-w") 'ivy-next-history-element)
 (define-key ivy-minibuffer-map (kbd "C-o") 'ivy-previous-line)
 (define-key ivy-minibuffer-map (kbd "C-l") 'ivy-next-line)
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-(define-key swiper-map (kbd "C-o") 'ivy-previous-line)
-(define-key swiper-map (kbd "C-l") 'ivy-next-line)
->>>>>>> dc97c15... fixup! Day 121: Rendering in Tiles
-=======
->>>>>>> 66a28c4... fixup! fixup! Day 121: Rendering in Tiles
-=======
->>>>>>> 49162ad... fixup! fixup! throw commit?
+
 
 (ctags-global-auto-update-mode)
 (setq ctags-update-prompt-create-tags nil)

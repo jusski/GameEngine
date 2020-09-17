@@ -151,9 +151,7 @@ Ceill(r32 A)
 r32
 internal inline Clamp(r32 A, r32 Min, r32 Max)
 {
-    r32 Result;
-    Result = Maximum(A, Min);
-    Result = Minimum(Result, Max);
+    r32 Result = Minimum(Maximum(A, Min), Max);
     
     return(Result);
 }

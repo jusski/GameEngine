@@ -1,5 +1,14 @@
 #pragma once
 
+internal inline bool32
+IsEmptySet(rectangle2i A)
+{
+    bool32 Result = false;
+    
+    Result = (A.MaxX < A.MinX) || (A.MaxY < A.MinY);
+    return(Result);
+}
+
 internal inline r32
 SafeRatio0(r32 A, r32 B)
 {
