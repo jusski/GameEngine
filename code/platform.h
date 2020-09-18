@@ -25,6 +25,7 @@
 #define ZeroStruct(Struct) ZeroMemory(sizeof(Struct), &(Struct))
 
 #define MonitorHz 30
+#define NUM_OF_PROCESSORS 4;
 typedef size_t memory_index;
 
 typedef __int8 int8;

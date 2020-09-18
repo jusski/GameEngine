@@ -629,7 +629,7 @@ DrawTextureQuick(loaded_bitmap *Destination, v2 Origin,
     __m128 nYAxisX = _mm_set1_ps(nYAxis.x);
     __m128 nYAxisY = _mm_set1_ps(nYAxis.y);
     
-    __m128 OriginX = _mm_set1_ps(Origin.x);
+    __m128 OriginX = _mm_setr_ps(Origin.x, Origin.x - 1, Origin.x - 2, Origin.x - 3);
     __m128 OriginY = _mm_set1_ps(Origin.y);
 
     __m128 TexWidth_4x = _mm_set1_ps((f32)(TexWidth - 2));
@@ -678,7 +678,7 @@ DrawTextureQuick(loaded_bitmap *Destination, v2 Origin,
     __m128 Zero = _mm_set1_ps(0.0f);
     __m128 Four = _mm_set1_ps(4.0f);
     __m128 Squared255 = _mm_set1_ps(255.0f * 255.0f);
-
+ 
     u32 *PixelPtr = 0;
 #if IACA
     IACA_START;
@@ -688,16 +688,16 @@ DrawTextureQuick(loaded_bitmap *Destination, v2 Origin,
     for (s32 y = MinY; y <= MaxY; y += 2)
     {
         
-        __m128 y_4x = _mm_set1_ps((f32) y);
-        __m128 dy = _mm_sub_ps(y_4x, OriginY);
+        __m128 dy = _mm_sub_ps(_mm_set1_ps((f32) y), OriginY);
         __m128 dx = _mm_set_ps((f32)(MinX + 3 - Origin.x),
-                                 (f32)(MinX + 2 - Origin.x),
-                                 (f32)(MinX + 1 - Origin.x),
-                                 (f32)(MinX + 0 - Origin.x));
+                               (f32)(MinX + 2 - Origin.x),
+                               (f32)(MinX + 1 - Origin.x),
+                               (f32)(MinX + 0 - Origin.x));
         
+        // __m128 dx = _mm_sub_ps(_mm_set1_ps((f32)MinX), OriginX);
         for (s32 x = MinX; x <= MaxX; x+=4)
         {
-            //__m128 dx = _mm_sub_ps(x_4x, OriginX);
+            //TODO make wide OriginX + 3,2,1,0
             
             __m128 U = _mm_add_ps(_mm_mul_ps(dx, nXAxisX),
                                   _mm_mul_ps(dy, nXAxisY));

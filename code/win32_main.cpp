@@ -2,6 +2,7 @@
 #include "game.h"
 #include "win32_main.h"
 #include <gl/gl.h>
+#include <atomic>
 
 global_variable volatile bool Running = true;
 
@@ -713,9 +714,83 @@ Win32ResetKeyboardTransitionCount(game_controller_input *Keyboard)
     }
 }
 
+struct work_queue
+{
+    std::atomic<u32> ConsumerPosition;
+    std::atomic<u32> ProducerPosition;
+    u32 Data[256];
+};
+
+struct thread_creation_data
+{
+    u32 Index;
+    work_queue *WorkQueue;
+};
+
+
+DWORD CALLBACK
+ThreadProc(LPVOID Parameter)
+{
+    thread_creation_data *ThreadCreationData = (thread_creation_data *)Parameter;
+    u32 ThreadIndex = ThreadCreationData->Index;
+    work_queue *WorkQueue = ThreadCreationData->WorkQueue;
+   
+    
+    Trace("Thread %d Created\n", ThreadIndex);
+
+    for(;;)
+    {
+        u32 ConsumerPosition = WorkQueue->ConsumerPosition.load(std::memory_order_relaxed);
+        u32 ProducerPosition = WorkQueue->ProducerPosition.load(std::memory_order_relaxed);
+        if (ConsumerPosition < ProducerPosition)
+        {
+            u32 Data = WorkQueue->Data[ConsumerPosition];
+            if(WorkQueue->ConsumerPosition.compare_exchange_weak(ConsumerPosition,
+                                                                 ConsumerPosition + 1,
+                                                                 std::memory_order_relaxed))
+            {
+                Sleep(1000);
+                Trace("Tread %d finished working on %d\n", ThreadIndex, Data);
+            }
+            
+        }
+        else
+        {
+            Trace("Thread %d sleeps\n", ThreadIndex);    
+            Sleep(1000);
+        }
+        
+    }
+}
+ 
+void AddToQueue(work_queue *WorkQueue, u32 Data)
+{
+    u32 Index = WorkQueue->ProducerPosition.load(std::memory_order_relaxed);
+    WorkQueue->Data[Index] = Data; // TODO Needs memory barier?
+    WorkQueue->ProducerPosition.store(Index + 1, std::memory_order_release);
+}
+
 int WINAPI
 WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowCommand)
 {
+    DWORD ThreadId;
+    
+    thread_creation_data Threads[4];
+    work_queue WorkQueue = {};
+    for (u32 Index = 0; Index < ArrayCount(Threads); ++Index)
+    {
+        Threads[Index].Index = Index;
+        Threads[Index].WorkQueue = &WorkQueue;
+        LPVOID Parameter = (LPVOID) (Threads + Index);
+        HANDLE Thread = CreateThread(0, 0, ThreadProc, Parameter, 0, &ThreadId);
+        CloseHandle(Thread);    
+    }
+
+    for (u32 Index = 0; Index < 10; ++Index)
+    {
+        AddToQueue(&WorkQueue, Index);
+    }
+    
     WNDCLASS WindowClass = {};
     WindowClass.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW;
     WindowClass.hInstance = Instance;
