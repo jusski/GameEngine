@@ -732,7 +732,7 @@ struct work_queue
     std::atomic<u32> ProducerIndexCache;
     std::atomic<u32> ProducerIndex;
     std::atomic<u32> FinishedJobs;
-    work_item WorkItems[8];
+    work_item WorkItems[1 << 3];
     u32 Mask;
 
     HANDLE Semaphore;
@@ -748,7 +748,7 @@ struct thread_creation_data
 bool32
 RemoveFromQueue(work_queue *WorkQueue, work_data *Data)
 {
-#if 1
+#if 0
     u32 ConsumerIndex;
     u32 Mask = WorkQueue->Mask;
     u32 ProducerIndexCache = WorkQueue->ProducerIndexCache.load(std::memory_order_relaxed);
@@ -821,6 +821,7 @@ ThreadProc(LPVOID Parameter)
             Trace("Thread %d works on %d\n", ThreadIndex, Data.Value);    
             Sleep(1000);
             ++WorkQueue->FinishedJobs;
+            Trace("Thread %d finished on %d %d\n", ThreadIndex, WorkQueue->FinishedJobs.load(std::memory_order_relaxed), Data.Value);    
         }
         else
         {
@@ -834,7 +835,7 @@ ThreadProc(LPVOID Parameter)
 bool32
 AddToQueue(work_queue *WorkQueue, work_data *Data)
 {
-#if 1
+#if 0
     u32 ProducerIndex = WorkQueue->ProducerIndex.load(std::memory_order_relaxed);
     u32 ConsumerIndex = WorkQueue->ConsumerIndex.load(std::memory_order_relaxed);
     u32 Mask = WorkQueue->Mask;
@@ -921,10 +922,15 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
         }
     }
 
-    while(WorkQueue.FinishedJobs < WorkQueue.ProducerIndex)
+    work_data Data;
+    while(RemoveFromQueue(&WorkQueue, &Data))
     {
-        int breakpoint = 3;
+        Trace("Main Thread works on %d\n", Data.Value);
+        Sleep(1000);
+        ++WorkQueue.FinishedJobs;
     };
+    
+    while(WorkQueue.FinishedJobs < WorkQueue.ProducerIndex) {};
     
     WNDCLASS WindowClass = {};
     WindowClass.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW;
