@@ -17,7 +17,7 @@
 #pragma warning(pop)
 
 #include "game.h"
-#define Trace(Format, ...) {_snprintf_s(OutputDebugMessage, sizeof(OutputDebugMessage), Format, ## __VA_ARGS__); OutputDebugStringA(OutputDebugMessage);}
+#define Trace(Format, ...) {char OutputDebugMessage[100]; _snprintf_s(OutputDebugMessage, sizeof(OutputDebugMessage), Format, ## __VA_ARGS__); OutputDebugStringA(OutputDebugMessage);}
 
 typedef  decltype(GameEngine) game_engine;
 

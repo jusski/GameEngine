@@ -720,5 +720,6 @@ the documentation of `query-replace'"
 
 (ctags-global-auto-update-mode)
 (setq ctags-update-prompt-create-tags nil)
+(setq tags-revert-without-query 1)
 
 (add-hook 'window-setup-hook 'post-load-stuff t)

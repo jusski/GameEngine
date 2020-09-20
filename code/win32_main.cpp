@@ -10,7 +10,7 @@ global_variable win32_offscreen_bitmap GlobalBitmap = {};
 global_variable game_offscreen_bitmap Video = {};
 global_variable long ClientWidth;
 global_variable long ClientHeight;
-global_variable char OutputDebugMessage[200];
+//global_variable char OutputDebugMessage[200];
 global_variable GLuint TextureHandle;
 
 internal inline void
@@ -714,11 +714,28 @@ Win32ResetKeyboardTransitionCount(game_controller_input *Keyboard)
     }
 }
 
+struct work_data
+{
+    u32 Value;
+};
+
+struct work_item
+{
+    work_data Data;
+    std::atomic<bool32> IsValid;
+    std::atomic<u32> Sequence;
+};
+
 struct work_queue
 {
-    std::atomic<u32> ConsumerPosition;
-    std::atomic<u32> ProducerPosition;
-    u32 Data[256];
+    std::atomic<u32> ConsumerIndex;
+    std::atomic<u32> ProducerIndexCache;
+    std::atomic<u32> ProducerIndex;
+    std::atomic<u32> FinishedJobs;
+    work_item WorkItems[8];
+    u32 Mask;
+
+    HANDLE Semaphore;
 };
 
 struct thread_creation_data
@@ -728,46 +745,145 @@ struct thread_creation_data
 };
 
 
+bool32
+RemoveFromQueue(work_queue *WorkQueue, work_data *Data)
+{
+#if 1
+    u32 ConsumerIndex;
+    u32 Mask = WorkQueue->Mask;
+    u32 ProducerIndexCache = WorkQueue->ProducerIndexCache.load(std::memory_order_relaxed);
+    do
+    {
+        ConsumerIndex = WorkQueue->ConsumerIndex.load(std::memory_order_relaxed);
+        if (ConsumerIndex >= ProducerIndexCache)
+        {
+            u32 ProducerIndex = WorkQueue->ProducerIndex.load(std::memory_order_relaxed);
+            if (ConsumerIndex >= ProducerIndex)
+            {
+                return(false);
+            }
+            else
+            {
+                WorkQueue->ProducerIndexCache.store(ProducerIndex, std::memory_order_release);
+                ProducerIndexCache = ProducerIndex;
+            }
+        }
+    } while(!WorkQueue->ConsumerIndex.compare_exchange_weak(ConsumerIndex,
+                                                           ConsumerIndex + 1,
+                                                           std::memory_order_relaxed));
+
+    *Data = WorkQueue->WorkItems[ConsumerIndex & Mask].Data;
+    WorkQueue->WorkItems[ConsumerIndex & Mask].IsValid.store(false,
+                                                      std::memory_order_release);
+#else
+    work_item *cell;
+    u32 buffer_mask_ = WorkQueue->Mask;
+    
+    size_t pos = WorkQueue->ConsumerIndex.load(std::memory_order_relaxed);
+    for (;;)
+    {
+      cell = &WorkQueue->WorkItems[pos & buffer_mask_];
+      size_t seq = 
+        cell->Sequence.load(std::memory_order_acquire);
+      intptr_t dif = (intptr_t)seq - (intptr_t)(pos + 1);
+      if (dif == 0)
+      {
+        if (WorkQueue->ConsumerIndex.compare_exchange_weak
+            (pos, pos + 1, std::memory_order_relaxed))
+          break;
+      }
+      else if (dif < 0)
+        return false;
+      else
+        pos = WorkQueue->ConsumerIndex.load(std::memory_order_relaxed);
+    }
+    *Data = cell->Data;
+    cell->Sequence.store
+      (pos + buffer_mask_ + 1, std::memory_order_release);
+#endif
+    return(true);
+}
+
 DWORD CALLBACK
 ThreadProc(LPVOID Parameter)
 {
     thread_creation_data *ThreadCreationData = (thread_creation_data *)Parameter;
     u32 ThreadIndex = ThreadCreationData->Index;
     work_queue *WorkQueue = ThreadCreationData->WorkQueue;
-   
-    
-    Trace("Thread %d Created\n", ThreadIndex);
+
+    Trace("Thread %d created\n", ThreadIndex);
 
     for(;;)
     {
-        u32 ConsumerPosition = WorkQueue->ConsumerPosition.load(std::memory_order_relaxed);
-        u32 ProducerPosition = WorkQueue->ProducerPosition.load(std::memory_order_relaxed);
-        if (ConsumerPosition < ProducerPosition)
+        work_data Data;
+        if (RemoveFromQueue(WorkQueue, &Data))
         {
-            u32 Data = WorkQueue->Data[ConsumerPosition];
-            if(WorkQueue->ConsumerPosition.compare_exchange_weak(ConsumerPosition,
-                                                                 ConsumerPosition + 1,
-                                                                 std::memory_order_relaxed))
-            {
-                Sleep(1000);
-                Trace("Tread %d finished working on %d\n", ThreadIndex, Data);
-            }
-            
+            Trace("Thread %d works on %d\n", ThreadIndex, Data.Value);    
+            Sleep(1000);
+            ++WorkQueue->FinishedJobs;
         }
         else
         {
             Trace("Thread %d sleeps\n", ThreadIndex);    
-            Sleep(1000);
+            WaitForSingleObject(WorkQueue->Semaphore, INFINITE);
         }
         
     }
 }
- 
-void AddToQueue(work_queue *WorkQueue, u32 Data)
+
+bool32
+AddToQueue(work_queue *WorkQueue, work_data *Data)
 {
-    u32 Index = WorkQueue->ProducerPosition.load(std::memory_order_relaxed);
-    WorkQueue->Data[Index] = Data; // TODO Needs memory barier?
-    WorkQueue->ProducerPosition.store(Index + 1, std::memory_order_release);
+#if 1
+    u32 ProducerIndex = WorkQueue->ProducerIndex.load(std::memory_order_relaxed);
+    u32 ConsumerIndex = WorkQueue->ConsumerIndex.load(std::memory_order_relaxed);
+    u32 Mask = WorkQueue->Mask;
+    u32 Index = ProducerIndex & Mask;
+
+    if ((ProducerIndex - ConsumerIndex) > Mask)
+    {
+        return(false);
+    }
+    else
+    {
+        bool32 IsValid;
+        do
+        {
+            IsValid = WorkQueue->WorkItems[Index].IsValid.load(std::memory_order_relaxed);
+        } while(IsValid);
+    }
+    WorkQueue->WorkItems[Index].Data = *Data;
+    WorkQueue->WorkItems[Index].IsValid.store(true, std::memory_order_release);
+    WorkQueue->ProducerIndex.store(ProducerIndex + 1, std::memory_order_release);
+
+    ReleaseSemaphore(WorkQueue->Semaphore, 1, 0);
+#else 
+    work_item *cell;
+    u32 buffer_mask_ = WorkQueue->Mask;
+    size_t pos = WorkQueue->ProducerIndex.load(std::memory_order_relaxed);
+    for (;;)
+    {
+      cell = &WorkQueue->WorkItems[pos & buffer_mask_];
+      size_t seq = 
+        cell->Sequence.load(std::memory_order_acquire);
+      intptr_t dif = (intptr_t)seq - (intptr_t)pos;
+      if (dif == 0)
+      {
+        if (WorkQueue->ProducerIndex.compare_exchange_weak
+            (pos, pos + 1, std::memory_order_relaxed))
+          break;
+      }
+      else if (dif < 0)
+        return false;
+      else
+        pos = WorkQueue->ProducerIndex.load(std::memory_order_relaxed);
+    }
+    cell->Data = *Data;
+    cell->Sequence.store(pos + 1, std::memory_order_release);
+    
+#endif
+    ReleaseSemaphore(WorkQueue->Semaphore, 1, 0);
+    return(true);
 }
 
 int WINAPI
@@ -777,6 +893,15 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
     
     thread_creation_data Threads[4];
     work_queue WorkQueue = {};
+    for (u32 Index = 0; Index < ArrayCount(WorkQueue.WorkItems); ++Index)
+    {
+        WorkQueue.WorkItems[Index].Sequence.store(Index, std::memory_order_release);
+    }
+    
+    HANDLE Semaphore = CreateSemaphore(0, 0, NUM_OF_PROCESSORS, 0);
+    WorkQueue.Semaphore = Semaphore;
+    WorkQueue.Mask = ArrayCount(WorkQueue.WorkItems) - 1;
+    
     for (u32 Index = 0; Index < ArrayCount(Threads); ++Index)
     {
         Threads[Index].Index = Index;
@@ -786,10 +911,20 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
         CloseHandle(Thread);    
     }
 
-    for (u32 Index = 0; Index < 10; ++Index)
+    for (u32 Index = 0; Index < 20; ++Index)
     {
-        AddToQueue(&WorkQueue, Index);
+        work_data Data = {Index};
+        
+        if(!AddToQueue(&WorkQueue, &Data))
+        {
+            Trace("AddToQueue failed on %d\n", Index);
+        }
     }
+
+    while(WorkQueue.FinishedJobs < WorkQueue.ProducerIndex)
+    {
+        int breakpoint = 3;
+    };
     
     WNDCLASS WindowClass = {};
     WindowClass.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW;
