@@ -712,7 +712,7 @@ the documentation of `query-replace'"
 (ivy-mode 1)
 (setq ivy-use-virtual-buffers t)
 (setq ivy-count-format "(%d/%d) ")
-(setq ivy-ignore-buffers '("\\` " "^\*"))
+(setq ivy-ignore-buffers '("\:" "\\` " "^\*"))
 (define-key ivy-minibuffer-map (kbd "C-w") 'ivy-next-history-element)
 (define-key ivy-minibuffer-map (kbd "C-o") 'ivy-previous-line)
 (define-key ivy-minibuffer-map (kbd "C-l") 'ivy-next-line)

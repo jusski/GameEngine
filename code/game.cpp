@@ -120,7 +120,7 @@ ClearBitmap(loaded_bitmap *Bitmap)
     if (Bitmap->Bytes)
     {
         u32 TotalBitmapSize = Bitmap->Width * Bitmap->Height * BITMAP_BYTES_PER_PIXEL;
-        ZeroMemory(TotalBitmapSize, Bitmap->Bytes);
+        ZeroSize(TotalBitmapSize, Bitmap->Bytes);
     }
 }
 
@@ -212,13 +212,6 @@ AddHero(game_state *GameState)
     GameState->CameraFollowingEntityIndex = Entity->Sim.StorageIndex;
 
     return(Entity);
-}
-
-internal void
-ClearScreen(loaded_bitmap *Buffer)
-{
-    DrawRectangle(Buffer, 0, 0, (r32)Buffer->Width, (r32)Buffer->Height,
-                  V4(1, 0, 1, 1));
 }
 
 internal void
@@ -335,6 +328,7 @@ internal void
 DrawRectangleOutline(loaded_bitmap *Bitmap, v2 TopLeft, v2 BottomRight, v4 Color)
 {
     r32 T = 1.0f;
+    
     
     // Top and Bottom lines
     DrawRectangle(Bitmap, TopLeft, v2{BottomRight.x, TopLeft.y + T}, Color);
@@ -614,6 +608,7 @@ InitializeTranState(transient_state *TranState, game_state *GameState,
     v4 SkyColor = V4(0.5f,0.0f,0.0f,1.0f);
     //v4 SkyColor = V4(0.52f, 0.82f, 0.92f, 1.0f);
     v4 DarkColor = V4(0.0f,0.99f,0.0f,1.0f);
+
     
     for (u32 j = 0; j < Sky->Height / Height; ++j)
     {
@@ -861,7 +856,7 @@ GameEngine(game_memory *Memory, game_input *Input,
     
 #endif
     DrawGroundBuffers(Video, GameState, TranState, GameState->CameraPosition);
-    RenderOutput(RenderGroup, Video, GameState->PixelsPerMeter);
+    TiledRenderOutput(RenderGroup, Video, GameState->PixelsPerMeter);
 
     //DrawTilesOutline(Video, GameState, GameState->CameraPosition);
 

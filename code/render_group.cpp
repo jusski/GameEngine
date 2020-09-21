@@ -330,6 +330,7 @@ DrawRectangle(loaded_bitmap *Bitmap, v2 TopLeft, v2 BottomRight, v4 Color)
     BottomRight.x = (BottomRight.x > Bitmap->Width) ? Bitmap->Width : BottomRight.x;
     BottomRight.y = (BottomRight.y > Bitmap->Height) ? Bitmap->Height : BottomRight.y;
 
+    
     s32 MinX = (s32)(TopLeft.x);
     s32 MinY = (s32)(TopLeft.y);
     s32 MaxX = (s32)(BottomRight.x);
@@ -351,6 +352,57 @@ DrawRectangle(loaded_bitmap *Bitmap, v2 TopLeft, v2 BottomRight, v4 Color)
             *Pixel++ = ColorBGR;
         }
         Row += Bitmap->Width ;
+    }
+    
+}
+
+internal void
+DrawRectangle(loaded_bitmap *Bitmap, v2 TopLeft, v2 BottomRight, v4 Color,
+              rectangle2i ClipRect, bool32 Even)
+{
+    Assert(Color.r >= 0 && Color.r <= 1.0f);
+    Assert(Color.g >= 0 && Color.g <= 1.0f);
+    Assert(Color.b >= 0 && Color.b <= 1.0f);
+    Assert(Color.a >= 0 && Color.a <= 1.0f);
+
+    TopLeft.x = (TopLeft.x < 0) ? 0 : TopLeft.x;
+    TopLeft.y = (TopLeft.y < 0) ? 0 : TopLeft.y;
+    BottomRight.x = (BottomRight.x > Bitmap->Width) ? Bitmap->Width : BottomRight.x;
+    BottomRight.y = (BottomRight.y > Bitmap->Height) ? Bitmap->Height : BottomRight.y;
+
+    rectangle2i FillRect;
+    FillRect.MinX = (s32)(TopLeft.x);
+    FillRect.MinY = (s32)(TopLeft.y);
+    FillRect.MaxX = (s32)(BottomRight.x);
+    FillRect.MaxY = (s32)(BottomRight.y);
+
+    FillRect = Intersection(FillRect, ClipRect);
+
+    if (IsEmptySet(FillRect)) return;
+
+    s32 MinX = FillRect.MinX;
+    s32 MinY = FillRect.MinY;
+    s32 MaxX = FillRect.MaxX;
+    s32 MaxY = FillRect.MaxY;
+
+    if (Even == (MinY & 1) ) MinY += 1; 
+
+    u32 ColorBGR =
+        RoundR32ToU32(Color.b * 255.0f) << 0  |
+        RoundR32ToU32(Color.g * 255.0f) << 8  |
+        RoundR32ToU32(Color.r * 255.0f) << 16 |
+        RoundR32ToU32(Color.a * 255.0f) << 24;
+    
+    u32 *Pixel = 0;
+    for (s32 y = MinY; y < MaxY; y += 2)
+    {
+        
+        for (s32 x = MinX; x < MaxX; x++)
+        {
+            Pixel = (u32 *)Bitmap->Bytes + Bitmap->Width*y + x;
+            *Pixel++ = ColorBGR;
+        }
+        
     }
     
 }
@@ -609,6 +661,24 @@ DrawTextureQuick(loaded_bitmap *Destination, v2 Origin,
     MinY = FillRect.MinY;
     MaxX = FillRect.MaxX;
     MaxY = FillRect.MaxY;
+    
+    //Align on 4 pixels boundary
+    u32 Align = ((MaxX - MinX) & 3);
+    __m128i ClipMask = _mm_set1_epi8(-1);
+    __m128i StartClipMask = ClipMask;
+    if (Align)
+    {
+        Align = 4 - Align;
+        MinX -= Align;
+        switch(Align)
+        {
+            case 1: {StartClipMask = _mm_slli_si128(ClipMask, 1 * 4); } break;
+            case 2: {StartClipMask = _mm_slli_si128(ClipMask, 2 * 4); } break;
+            case 3: {StartClipMask = _mm_slli_si128(ClipMask, 3 * 4); } break;
+        }
+    
+    }
+        
 
     // Draw only even or odd screen lines
     if (Even == (MinY & 1) ) MinY += 1; 
@@ -685,7 +755,7 @@ DrawTextureQuick(loaded_bitmap *Destination, v2 Origin,
 #endif
     BEGIN_TIMED_BLOCK(PixelHit);
     
-    for (s32 y = MinY; y <= MaxY; y += 2)
+    for (s32 y = MinY; y < MaxY; y += 2)
     {
         
         __m128 dy = _mm_sub_ps(_mm_set1_ps((f32) y), OriginY);
@@ -693,9 +763,10 @@ DrawTextureQuick(loaded_bitmap *Destination, v2 Origin,
                                (f32)(MinX + 2 - Origin.x),
                                (f32)(MinX + 1 - Origin.x),
                                (f32)(MinX + 0 - Origin.x));
+        ClipMask = StartClipMask;
         
         // __m128 dx = _mm_sub_ps(_mm_set1_ps((f32)MinX), OriginX);
-        for (s32 x = MinX; x <= MaxX; x+=4)
+        for (s32 x = MinX; x < MaxX; x+=4)
         {
             //TODO make wide OriginX + 3,2,1,0
             
@@ -724,6 +795,8 @@ DrawTextureQuick(loaded_bitmap *Destination, v2 Origin,
                 (_mm_and_ps(_mm_cmpge_ps(U, Zero), _mm_cmple_ps(U, One))),
                 (_mm_and_ps(_mm_cmpge_ps(V, Zero), _mm_cmple_ps(V, One)))));
 
+            ShouldFill = _mm_and_si128(ShouldFill, ClipMask);
+            
             //Assert((U >= 0.0f) && (U <= 1.0f));
             //Assert((V >= 0.0f) && (V <= 1.0f));
             
@@ -734,7 +807,8 @@ DrawTextureQuick(loaded_bitmap *Destination, v2 Origin,
 
             // Unpack A B C D Texel
 
-            Yi = _mm_add_epi32(_mm_mullo_epi16(Yi, _mm_set1_epi32(TexWidth)), Xi);
+            //TODO IMPORTANT TexWidth * Yi must be < 16 bits or change to SSE4 epi32
+            Yi = _mm_add_epi32(_mm_mullo_epi32(Yi, _mm_set1_epi32(TexWidth)), Xi);
 
             u32 *TexelPtr0 = TextureBytes + MI(Yi,0);
             u32 *TexelPtr1 = TextureBytes + MI(Yi,1);
@@ -792,7 +866,7 @@ DrawTextureQuick(loaded_bitmap *Destination, v2 Origin,
             TexelDa = _mm_cvtepi32_ps(_mm_and_si128(_mm_srl_epi32(TexelDi, AlphaShift), Mask_0xFF));
 
             // Unpack Destination Pixel
-            //TODO IMPORTANT Buffer overflow 
+        
             PixelPtr = (u32 *)Destination->Bytes + y * Destination->Width + x;
             __m128i Pixeli = _mm_loadu_si128((__m128i *)PixelPtr);
 
@@ -876,9 +950,9 @@ DrawTextureQuick(loaded_bitmap *Destination, v2 Origin,
             __m128i Mask2 = _mm_andnot_si128(ShouldFill, Pixeli);
 
             _mm_storeu_si128((__m128i *)PixelPtr, _mm_or_si128(Mask1, Mask2));
-            
-                
-            
+
+            ClipMask = _mm_set1_epi8(-1);
+
             dx = _mm_add_ps(dx, Four);
         }
     }
@@ -1015,17 +1089,6 @@ MakePyramidNormalMap(loaded_bitmap *Bitmap)
     }
 }
 
-internal void
-DrawRectangle(loaded_bitmap *Bitmap,
-              r32 TopLeftX, r32 TopLeftY,
-              r32 BottomRightX, r32 BottomRightY,
-              v4 Color)
-{
-    v2 TopLeft = {TopLeftX, TopLeftY};
-    v2 BottomRight = {BottomRightX, BottomRightY};
-    DrawRectangle(Bitmap, TopLeft, BottomRight, Color);
-}
-
 internal render_group *
 AllocateRenderGroup(memory_arena *Arena, game_state *GameState,
                     u32 MaxPushBufferSize)
@@ -1042,10 +1105,9 @@ AllocateRenderGroup(memory_arena *Arena, game_state *GameState,
 
 internal void
 RenderOutput(render_group *Group, loaded_bitmap *Target,
-             r32 PixelsPerMeter )
+             r32 PixelsPerMeter, rectangle2i ClipRect, bool32 Even)
 {
-    TIMED_FUNCTION();
-    
+    //TODO What to do about borders? (4 boundary pixel clip)
     v2 ScreenCenter = 0.5f * V2(Target->Width, Target->Height);
 
     for (u32 Address = 0; Address < Group->PushBufferSize;)
@@ -1064,10 +1126,10 @@ RenderOutput(render_group *Group, loaded_bitmap *Target,
 
                 v2 XAxis = (r32)Entry->Bitmap->Width * V2(1.f, 0.f);
                 v2 YAxis = (r32)Entry->Bitmap->Height * V2(0.f, 1.f);
-                rectangle2i ClipRect = {0, 0,
-                    (s32)Target->Width - 4, (s32)Target->Height - 4 };
+
+
                 DrawTextureQuick(Target, P, XAxis, YAxis,
-                                 Entry->Bitmap, V4(1,1,1,1), ClipRect);                
+                                 Entry->Bitmap, V4(1,1,1,1), ClipRect, Even);
 
                 Address += sizeof(*Entry);
             } break;
@@ -1089,13 +1151,15 @@ RenderOutput(render_group *Group, loaded_bitmap *Target,
                 v2 P = ScreenCenter + 2.f*Entry->Offset;
                 v2 HalfDim = 0.5f * Entry->Dim;
          
-                DrawRectangle(Target, P - HalfDim, P + HalfDim, Entry->Color);
+                DrawRectangle(Target, P - HalfDim, P + HalfDim,
+                              Entry->Color, ClipRect, Even);
 
                 Address += sizeof(*Entry);
             } break;
             
             case(RenderGroupEntryType_render_entry_rect_slow):
             {
+                Assert(0);
                 render_entry_rect_slow *Entry = (render_entry_rect_slow *) Header;
                 v2 P = Entry->Origin;
                 
@@ -1106,6 +1170,7 @@ RenderOutput(render_group *Group, loaded_bitmap *Target,
             
             case(RenderGroupEntryType_render_entry_tex_slow):
             {
+                Assert(0);
                 render_entry_tex_slow *Entry = (render_entry_tex_slow *) Header;
                 v2 P = Entry->Origin;
                 
@@ -1120,8 +1185,11 @@ RenderOutput(render_group *Group, loaded_bitmap *Target,
             case(RenderGroupEntryType_render_entry_clear):
             {
                 render_entry_clear *Entry = (render_entry_clear *) Header;
-                DrawRectangle(Target, 0, 0, (r32)Target->Width,
-                              (r32)Target->Height, Entry->Color);
+
+                v2 TopLeft = V2(0.f, 0.f);
+                v2 BottomRight = V2((r32)Target->Width, (r32)Target->Height);
+                DrawRectangle(Target, TopLeft, BottomRight,
+                              Entry->Color, ClipRect, Even);
                 Address += sizeof(*Entry);
             } break;
             
@@ -1129,4 +1197,32 @@ RenderOutput(render_group *Group, loaded_bitmap *Target,
         }
     }
 }
- 
+
+
+internal void
+TiledRenderOutput(render_group *Group, loaded_bitmap *Target, r32 PixelsPerMeter)
+{
+    u32 TileCountX = 4;
+    u32 TileCountY = 4;
+    u32 TileWidth = Target->Width / TileCountX;
+    u32 TileHeight = Target->Height / TileCountY;
+
+    rectangle2i ClipRect;
+    for (u32 TileY = 0; TileY < TileCountY; ++TileY )
+    {
+        for (u32 TileX = 0; TileX < TileCountX; ++TileX )
+        {
+            //TODO IMPORTANT -4 and overflow bug fix MinX and MaxY MaxX
+            
+            ClipRect.MinX = TileX * TileWidth + 4;
+            ClipRect.MinY = TileY * TileHeight + 4;
+            ClipRect.MaxX = ClipRect.MinX + TileWidth - 4;
+            ClipRect.MaxY = ClipRect.MinY + TileHeight - 4;
+            
+            RenderOutput(Group, Target, PixelsPerMeter, ClipRect, true);
+            RenderOutput(Group, Target, PixelsPerMeter, ClipRect, false);            
+        }
+    
+    }
+    
+}

@@ -21,8 +21,8 @@
 #define Minimum(A, B) (A) < (B) ? (A) : (B)
 #define Maximum(A, B) (A) > (B) ? (A) : (B)
 
-#define ZeroArray(Array) ZeroMemory(sizeof(Array), Array)
-#define ZeroStruct(Struct) ZeroMemory(sizeof(Struct), &(Struct))
+#define ZeroArray(Array) ZeroSize(sizeof(Array), Array)
+#define ZeroStruct(Struct) ZeroSize(sizeof(Struct), &(Struct))
 
 #define MonitorHz 30
 #define NUM_OF_PROCESSORS 4
@@ -541,7 +541,7 @@ operator+=(v4 &a, v4 &b)
 }
 
 internal inline void
-ZeroMemory(u32 Size, void *Ptr)
+ZeroSize(u32 Size, void *Ptr)
 {
     u8 *byte = (u8 *)Ptr;
     while(Size--)

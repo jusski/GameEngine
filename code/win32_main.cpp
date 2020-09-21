@@ -1,8 +1,5 @@
-#include "platform.h"
-#include "game.h"
+#include "pch.h"
 #include "win32_main.h"
-#include <gl/gl.h>
-#include <atomic>
 
 global_variable volatile bool Running = true;
 
@@ -751,55 +748,55 @@ RemoveFromQueue(work_queue *WorkQueue, work_data *Data)
 #if 0
     u32 ConsumerIndex;
     u32 Mask = WorkQueue->Mask;
-    u32 ProducerIndexCache = WorkQueue->ProducerIndexCache.load(std::memory_order_relaxed);
+    u32 ProducerIndexCache = WorkQueue->ProducerIndexCache.load
+        (std::memory_order_relaxed);
     do
     {
         ConsumerIndex = WorkQueue->ConsumerIndex.load(std::memory_order_relaxed);
         if (ConsumerIndex >= ProducerIndexCache)
         {
-            u32 ProducerIndex = WorkQueue->ProducerIndex.load(std::memory_order_relaxed);
+            u32 ProducerIndex = WorkQueue->ProducerIndex.load
+                (std::memory_order_relaxed);
             if (ConsumerIndex >= ProducerIndex)
             {
                 return(false);
             }
             else
             {
-                WorkQueue->ProducerIndexCache.store(ProducerIndex, std::memory_order_release);
+                WorkQueue->ProducerIndexCache.store
+                    (ProducerIndex, std::memory_order_release);
                 ProducerIndexCache = ProducerIndex;
             }
         }
-    } while(!WorkQueue->ConsumerIndex.compare_exchange_weak(ConsumerIndex,
-                                                           ConsumerIndex + 1,
-                                                           std::memory_order_relaxed));
+    } while(!WorkQueue->ConsumerIndex.compare_exchange_weak
+            (ConsumerIndex, ConsumerIndex + 1, std::memory_order_relaxed));
 
     *Data = WorkQueue->WorkItems[ConsumerIndex & Mask].Data;
-    WorkQueue->WorkItems[ConsumerIndex & Mask].IsValid.store(false,
-                                                      std::memory_order_release);
+    WorkQueue->WorkItems[ConsumerIndex & Mask].IsValid.store
+        (false, std::memory_order_release);
 #else
-    work_item *cell;
-    u32 buffer_mask_ = WorkQueue->Mask;
+    work_item *Item;
+    u32 Mask = WorkQueue->Mask;
     
-    size_t pos = WorkQueue->ConsumerIndex.load(std::memory_order_relaxed);
+    size_t Index = WorkQueue->ConsumerIndex.load(std::memory_order_relaxed);
     for (;;)
     {
-      cell = &WorkQueue->WorkItems[pos & buffer_mask_];
-      size_t seq = 
-        cell->Sequence.load(std::memory_order_acquire);
-      intptr_t dif = (intptr_t)seq - (intptr_t)(pos + 1);
+      Item = &WorkQueue->WorkItems[Index & Mask];
+      size_t Sequence = Item->Sequence.load(std::memory_order_acquire);
+      intptr_t dif = (intptr_t)Sequence - (intptr_t)(Index + 1);
       if (dif == 0)
       {
         if (WorkQueue->ConsumerIndex.compare_exchange_weak
-            (pos, pos + 1, std::memory_order_relaxed))
+            (Index, Index + 1, std::memory_order_relaxed))
           break;
       }
       else if (dif < 0)
         return false;
       else
-        pos = WorkQueue->ConsumerIndex.load(std::memory_order_relaxed);
+        Index = WorkQueue->ConsumerIndex.load(std::memory_order_relaxed);
     }
-    *Data = cell->Data;
-    cell->Sequence.store
-      (pos + buffer_mask_ + 1, std::memory_order_release);
+    *Data = Item->Data;
+    Item->Sequence.store(Index + Mask + 1, std::memory_order_release);
 #endif
     return(true);
 }
@@ -819,7 +816,7 @@ ThreadProc(LPVOID Parameter)
         if (RemoveFromQueue(WorkQueue, &Data))
         {
             Trace("Thread %d works on %d\n", ThreadIndex, Data.Value);    
-            Sleep(1000);
+            Sleep(10);
             ++WorkQueue->FinishedJobs;
             Trace("Thread %d finished on %d %d\n", ThreadIndex, WorkQueue->FinishedJobs.load(std::memory_order_relaxed), Data.Value);    
         }
@@ -850,7 +847,8 @@ AddToQueue(work_queue *WorkQueue, work_data *Data)
         bool32 IsValid;
         do
         {
-            IsValid = WorkQueue->WorkItems[Index].IsValid.load(std::memory_order_relaxed);
+            IsValid = WorkQueue->WorkItems[Index].IsValid.load
+                (std::memory_order_relaxed);
         } while(IsValid);
     }
     WorkQueue->WorkItems[Index].Data = *Data;
@@ -859,28 +857,30 @@ AddToQueue(work_queue *WorkQueue, work_data *Data)
 
     ReleaseSemaphore(WorkQueue->Semaphore, 1, 0);
 #else 
-    work_item *cell;
-    u32 buffer_mask_ = WorkQueue->Mask;
-    size_t pos = WorkQueue->ProducerIndex.load(std::memory_order_relaxed);
+    work_item *Item;
+    u32 Mask = WorkQueue->Mask;
+    std::atomic<u32> *ProducerIndex = &WorkQueue->ProducerIndex;
+    
+    size_t Index = ProducerIndex->load(std::memory_order_relaxed);
     for (;;)
     {
-      cell = &WorkQueue->WorkItems[pos & buffer_mask_];
-      size_t seq = 
-        cell->Sequence.load(std::memory_order_acquire);
-      intptr_t dif = (intptr_t)seq - (intptr_t)pos;
-      if (dif == 0)
-      {
-        if (WorkQueue->ProducerIndex.compare_exchange_weak
-            (pos, pos + 1, std::memory_order_relaxed))
-          break;
-      }
-      else if (dif < 0)
-        return false;
-      else
-        pos = WorkQueue->ProducerIndex.load(std::memory_order_relaxed);
+        Item = &WorkQueue->WorkItems[Index & Mask];
+        size_t Sequence = 
+            Item->Sequence.load(std::memory_order_acquire);
+        intptr_t Diff = (intptr_t)Sequence - (intptr_t)Index;
+        if (Diff == 0)
+        {
+            if (ProducerIndex->compare_exchange_weak
+                (Index, Index + 1, std::memory_order_relaxed))
+                break;
+        }
+        else if (Diff < 0)
+            return(false);
+        else
+            Index = ProducerIndex->load(std::memory_order_relaxed);
     }
-    cell->Data = *Data;
-    cell->Sequence.store(pos + 1, std::memory_order_release);
+    Item->Data = *Data;
+    Item->Sequence.store(Index + 1, std::memory_order_release);
     
 #endif
     ReleaseSemaphore(WorkQueue->Semaphore, 1, 0);
@@ -888,7 +888,7 @@ AddToQueue(work_queue *WorkQueue, work_data *Data)
 }
 
 int WINAPI
-WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowCommand)
+WinMain(HINSTANCE Instance, HINSTANCE _Ignore, LPSTR CommandLine, int ShowCommand)
 {
     DWORD ThreadId;
     
@@ -926,7 +926,7 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
     while(RemoveFromQueue(&WorkQueue, &Data))
     {
         Trace("Main Thread works on %d\n", Data.Value);
-        Sleep(1000);
+        Sleep(10);
         ++WorkQueue.FinishedJobs;
     };
     
@@ -940,9 +940,13 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CommandLine, int ShowC
 
     RegisterClassA(&WindowClass);
 
+    u32 WindowFlags = WS_EX_TOPMOST | WS_EX_LAYERED;
+    if (IsDebuggerPresent())
+    {
+        WindowFlags = 0;
+    }
     HWND Window = CreateWindowExA(
-        WS_EX_TOPMOST | WS_EX_LAYERED,
-        //0,
+        WindowFlags,
         WindowClass.lpszClassName,
         "Learning C Hello World",
         WS_OVERLAPPEDWINDOW,

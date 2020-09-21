@@ -1,21 +1,6 @@
-/*
- * win32_hello.h
- *
- *  Created on: Jun 9, 2020
- *      Author: desktop
- */
-
-#ifndef WIN32_HELLO_H_
-#define WIN32_HELLO_H_
-
-
-#pragma warning(push, 0)
-#include <windows.h>
-#include <dsound.h>
-#include <stdio.h>
-#include <math.h>
-#pragma warning(pop)
-
+#pragma once
+#include "pch.h"
+#include "platform.h"
 #include "game.h"
 #define Trace(Format, ...) {char OutputDebugMessage[100]; _snprintf_s(OutputDebugMessage, sizeof(OutputDebugMessage), Format, ## __VA_ARGS__); OutputDebugStringA(OutputDebugMessage);}
 
@@ -74,5 +59,3 @@ struct win32_debug_sound_markers
 
 
 
-
-#endif /* WIN32_HELLO_H_ */
