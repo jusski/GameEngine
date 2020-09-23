@@ -717,9 +717,22 @@ the documentation of `query-replace'"
 (define-key ivy-minibuffer-map (kbd "C-o") 'ivy-previous-line)
 (define-key ivy-minibuffer-map (kbd "C-l") 'ivy-next-line)
 
+(define-key dired-mode-map (kbd "C-l") 'dired-next-line)
+(define-key dired-mode-map (kbd "C-o") 'dired-previous-line)
+
 
 (ctags-global-auto-update-mode)
 (setq ctags-update-prompt-create-tags nil)
 (setq tags-revert-without-query 1)
 
+(global-set-key [f1] 'eshell)
+(global-set-key [f2] 'quick-calc)
+
+(setq rcirc-default-nick "jusski")
+(setq rcirc-authinfo
+                '(("freenode" nickserv "jusski" "asdf6ghj")))
+
+(add-hook 'rcirc-mode-hook
+               (lambda ()
+                 (rcirc-track-minor-mode 1)))
 (add-hook 'window-setup-hook 'post-load-stuff t)

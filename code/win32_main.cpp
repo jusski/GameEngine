@@ -711,25 +711,20 @@ Win32ResetKeyboardTransitionCount(game_controller_input *Keyboard)
     }
 }
 
-struct work_data
-{
-    u32 Value;
-};
-
 struct work_item
 {
-    work_data Data;
-    std::atomic<bool32> IsValid;
+    void *Data;
+    callback_function CallBack;
+
     std::atomic<u32> Sequence;
 };
 
 struct work_queue
 {
     std::atomic<u32> ConsumerIndex;
-    std::atomic<u32> ProducerIndexCache;
     std::atomic<u32> ProducerIndex;
     std::atomic<u32> FinishedJobs;
-    work_item WorkItems[1 << 3];
+    work_item WorkItems[1 << 8];
     u32 Mask;
 
     HANDLE Semaphore;
@@ -741,40 +736,18 @@ struct thread_creation_data
     work_queue *WorkQueue;
 };
 
+void
+WaitForAllToFinish(work_queue *WorkQueue)
+{
+    while (WorkQueue->FinishedJobs < WorkQueue->ProducerIndex)
+    {
+        //spin
+    }
+}
 
 bool32
-RemoveFromQueue(work_queue *WorkQueue, work_data *Data)
+RemoveFromQueue(work_queue *WorkQueue, callback_function *CallBack, void **Data)
 {
-#if 0
-    u32 ConsumerIndex;
-    u32 Mask = WorkQueue->Mask;
-    u32 ProducerIndexCache = WorkQueue->ProducerIndexCache.load
-        (std::memory_order_relaxed);
-    do
-    {
-        ConsumerIndex = WorkQueue->ConsumerIndex.load(std::memory_order_relaxed);
-        if (ConsumerIndex >= ProducerIndexCache)
-        {
-            u32 ProducerIndex = WorkQueue->ProducerIndex.load
-                (std::memory_order_relaxed);
-            if (ConsumerIndex >= ProducerIndex)
-            {
-                return(false);
-            }
-            else
-            {
-                WorkQueue->ProducerIndexCache.store
-                    (ProducerIndex, std::memory_order_release);
-                ProducerIndexCache = ProducerIndex;
-            }
-        }
-    } while(!WorkQueue->ConsumerIndex.compare_exchange_weak
-            (ConsumerIndex, ConsumerIndex + 1, std::memory_order_relaxed));
-
-    *Data = WorkQueue->WorkItems[ConsumerIndex & Mask].Data;
-    WorkQueue->WorkItems[ConsumerIndex & Mask].IsValid.store
-        (false, std::memory_order_release);
-#else
     work_item *Item;
     u32 Mask = WorkQueue->Mask;
     
@@ -783,21 +756,22 @@ RemoveFromQueue(work_queue *WorkQueue, work_data *Data)
     {
       Item = &WorkQueue->WorkItems[Index & Mask];
       size_t Sequence = Item->Sequence.load(std::memory_order_acquire);
-      intptr_t dif = (intptr_t)Sequence - (intptr_t)(Index + 1);
-      if (dif == 0)
+      intptr_t Diff = (intptr_t)Sequence - (intptr_t)(Index + 1);
+      if (Diff == 0)
       {
         if (WorkQueue->ConsumerIndex.compare_exchange_weak
             (Index, Index + 1, std::memory_order_relaxed))
           break;
       }
-      else if (dif < 0)
+      else if (Diff < 0)
         return false;
       else
         Index = WorkQueue->ConsumerIndex.load(std::memory_order_relaxed);
     }
+    *CallBack = Item->CallBack;
     *Data = Item->Data;
     Item->Sequence.store(Index + Mask + 1, std::memory_order_release);
-#endif
+
     return(true);
 }
 
@@ -812,13 +786,18 @@ ThreadProc(LPVOID Parameter)
 
     for(;;)
     {
-        work_data Data;
-        if (RemoveFromQueue(WorkQueue, &Data))
+        void *Data = 0;
+        callback_function CallBack = 0;
+        if (RemoveFromQueue(WorkQueue, &CallBack, &Data))
         {
-            Trace("Thread %d works on %d\n", ThreadIndex, Data.Value);    
-            Sleep(10);
+            Assert(Data);
+            Assert(CallBack);
+            
+            Trace("Thread %d works\n", ThreadIndex);    
+            CallBack(Data);
             ++WorkQueue->FinishedJobs;
-            Trace("Thread %d finished on %d %d\n", ThreadIndex, WorkQueue->FinishedJobs.load(std::memory_order_relaxed), Data.Value);    
+            Trace("Thread %d finished on %d\n", ThreadIndex,
+                  WorkQueue->FinishedJobs.load(std::memory_order_relaxed));    
         }
         else
         {
@@ -830,33 +809,8 @@ ThreadProc(LPVOID Parameter)
 }
 
 bool32
-AddToQueue(work_queue *WorkQueue, work_data *Data)
+AddToQueue(work_queue *WorkQueue, callback_function CallBack, void *Data)
 {
-#if 0
-    u32 ProducerIndex = WorkQueue->ProducerIndex.load(std::memory_order_relaxed);
-    u32 ConsumerIndex = WorkQueue->ConsumerIndex.load(std::memory_order_relaxed);
-    u32 Mask = WorkQueue->Mask;
-    u32 Index = ProducerIndex & Mask;
-
-    if ((ProducerIndex - ConsumerIndex) > Mask)
-    {
-        return(false);
-    }
-    else
-    {
-        bool32 IsValid;
-        do
-        {
-            IsValid = WorkQueue->WorkItems[Index].IsValid.load
-                (std::memory_order_relaxed);
-        } while(IsValid);
-    }
-    WorkQueue->WorkItems[Index].Data = *Data;
-    WorkQueue->WorkItems[Index].IsValid.store(true, std::memory_order_release);
-    WorkQueue->ProducerIndex.store(ProducerIndex + 1, std::memory_order_release);
-
-    ReleaseSemaphore(WorkQueue->Semaphore, 1, 0);
-#else 
     work_item *Item;
     u32 Mask = WorkQueue->Mask;
     std::atomic<u32> *ProducerIndex = &WorkQueue->ProducerIndex;
@@ -865,8 +819,7 @@ AddToQueue(work_queue *WorkQueue, work_data *Data)
     for (;;)
     {
         Item = &WorkQueue->WorkItems[Index & Mask];
-        size_t Sequence = 
-            Item->Sequence.load(std::memory_order_acquire);
+        size_t Sequence = Item->Sequence.load(std::memory_order_acquire);
         intptr_t Diff = (intptr_t)Sequence - (intptr_t)Index;
         if (Diff == 0)
         {
@@ -879,10 +832,10 @@ AddToQueue(work_queue *WorkQueue, work_data *Data)
         else
             Index = ProducerIndex->load(std::memory_order_relaxed);
     }
-    Item->Data = *Data;
+    Item->CallBack = CallBack;
+    Item->Data = Data;
     Item->Sequence.store(Index + 1, std::memory_order_release);
-    
-#endif
+
     ReleaseSemaphore(WorkQueue->Semaphore, 1, 0);
     return(true);
 }
@@ -899,7 +852,7 @@ WinMain(HINSTANCE Instance, HINSTANCE _Ignore, LPSTR CommandLine, int ShowComman
         WorkQueue.WorkItems[Index].Sequence.store(Index, std::memory_order_release);
     }
     
-    HANDLE Semaphore = CreateSemaphore(0, 0, NUM_OF_PROCESSORS, 0);
+    HANDLE Semaphore = CreateSemaphore(0, 0, ArrayCount(Threads), 0);
     WorkQueue.Semaphore = Semaphore;
     WorkQueue.Mask = ArrayCount(WorkQueue.WorkItems) - 1;
     
@@ -911,7 +864,7 @@ WinMain(HINSTANCE Instance, HINSTANCE _Ignore, LPSTR CommandLine, int ShowComman
         HANDLE Thread = CreateThread(0, 0, ThreadProc, Parameter, 0, &ThreadId);
         CloseHandle(Thread);    
     }
-
+#if 0
     for (u32 Index = 0; Index < 20; ++Index)
     {
         work_data Data = {Index};
@@ -931,6 +884,7 @@ WinMain(HINSTANCE Instance, HINSTANCE _Ignore, LPSTR CommandLine, int ShowComman
     };
     
     while(WorkQueue.FinishedJobs < WorkQueue.ProducerIndex) {};
+#endif
     
     WNDCLASS WindowClass = {};
     WindowClass.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW;
@@ -988,9 +942,16 @@ WinMain(HINSTANCE Instance, HINSTANCE _Ignore, LPSTR CommandLine, int ShowComman
         SoundData.Buffer = (int16 *)VirtualAlloc(0, SoundOutput.BufferSize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 
         game_memory Memory = {};
+
+        Memory.AddToQueue = AddToQueue;
+        Memory.RemoveFromQueue = RemoveFromQueue;
+        Memory.WorkQueue = &WorkQueue;
+        Memory.WaitForAllToFinish = WaitForAllToFinish;
+        
         Memory.ReadFileToMemory = ReadFileToMemory;
         Memory.PersistentStorageSize = MegaBytes(64);
         Memory.TransientStorageSize = MegaBytes(64);
+        
         Win32State.TotalMemorySize = Memory.PersistentStorageSize + Memory.TransientStorageSize;
         LPVOID BaseMemoryAddress = 0;
         Win32State.MemoryArea = VirtualAlloc(BaseMemoryAddress, Win32State.TotalMemorySize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);

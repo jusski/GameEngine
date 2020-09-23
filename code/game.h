@@ -55,12 +55,15 @@ struct ground_buffer
     
 };
 
+struct work_queue;
 struct transient_state
 {
     bool32 IsInitialized;
     memory_arena Arena;
     u32 GroundBufferCount;
     ground_buffer *GroundBuffers;
+
+    work_queue *HighPriorityQueue;
 
     enviroment_map Sky;
     enviroment_map Ground;
@@ -88,8 +91,28 @@ struct game_offscreen_bitmap
 
 };
 
-loaded_file ReadFileToMemory(const char* FileName); 
+struct render_group;
+struct render_work_data
+{
+    render_group *Group;
+    loaded_bitmap *Target;
+    rectangle2i ClipRect;
+
+    r32 PixelsPerMeter;
+};
+typedef void (*callback_function)(void *);
+
+struct work_queue;
+loaded_file ReadFileToMemory(const char* );
+bool32 AddToQueue(work_queue *, callback_function, void *);
+bool32 RemoveFromQueue(work_queue *, callback_function *, void **);
+void WaitForAllToFinish(work_queue *);
+    
 typedef decltype(ReadFileToMemory) read_file_to_memory;
+typedef decltype(AddToQueue) add_to_queue;
+typedef decltype(RemoveFromQueue) remove_from_queue;
+typedef decltype(WaitForAllToFinish) wait_for_all_to_finish;
+
 
 struct game_memory
 {
@@ -97,10 +120,19 @@ struct game_memory
     void *PersistentStorage;
     void *TransientStorage;
     u32 TransientStorageSize;
+
     read_file_to_memory *ReadFileToMemory;
+    add_to_queue *AddToQueue;
+    remove_from_queue *RemoveFromQueue;
+    wait_for_all_to_finish *WaitForAllToFinish;
+    
+    work_queue *WorkQueue;
 
     debug_cycle_counter DebugCycleCounters[DebugCycleCounterType_Size];
+    
 };
+
+
 
 struct entity
 {
@@ -134,7 +166,7 @@ struct game_controller_input
 struct game_input
 {
     game_controller_input Keyboard;
-    r32 dtForFrame;
+    f32 dtForFrame;
 };
 
 struct controlled_hero
@@ -160,10 +192,10 @@ struct hero_bitmaps
 struct game_state
 {
     float t;
-    r32 SecondsPerFrame;
+    f32 SecondsPerFrame;
     controlled_hero Player;
     tile_map TileMap;
-    r32 WallSize;
+    f32 WallSize;
 
     tile_map_position CameraPosition;
     u32 CameraFollowingEntityIndex;
@@ -192,8 +224,8 @@ struct game_state
     };
     u32 EntityCount;
     entity Entities[1024];
-    r32 PixelsPerMeter;
-    r32 MetersPerPixel;
+    f32 PixelsPerMeter;
+    f32 MetersPerPixel;
 };
 
 extern "C" void __declspec(dllexport) GameEngine(game_memory *Memory, game_input *Input, game_sound_output_buffer *Sound, game_offscreen_bitmap *Video);

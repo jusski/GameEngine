@@ -1,6 +1,11 @@
+
 #include "game.h"
 
-static game_memory *GlobalMemory;
+global_variable add_to_queue *WorkQueuePush;
+global_variable wait_for_all_to_finish *SpinWait;
+
+global_variable game_memory *GlobalMemory;
+
 
 #include "entity.cpp"
 #include "tile_map.cpp"
@@ -458,113 +463,119 @@ MakeRect(loaded_bitmap *Bitmap)
         }
     }
 }
-    
+
+
+//global_variable remove_from_queue RemoveFromQueue;
+
 internal void
 InitializeGameState(game_state *GameState, loaded_bitmap *Video, game_memory *Memory)
 {
-    
-        loaded_bitmap HeroFacingRight = LoadBitmap(Memory->ReadFileToMemory, "car_right.bmp");
-        GameState->HeroFacingRight.Body = HeroFacingRight;
-        GameState->HeroFacingRight.Body.Align = {20, 33};
-        loaded_bitmap HeroFacingLeft = LoadBitmap(Memory->ReadFileToMemory, "car_left.bmp");
-        GameState->HeroFacingLeft.Body = HeroFacingLeft;
-        GameState->HeroFacingLeft.Body.Align = {20, 33};
+    WorkQueuePush = Memory->AddToQueue;
+    SpinWait = Memory->WaitForAllToFinish;
+    //RemoveFromQueue = Memory->RemoveFromQueue;
         
-        GameState->Grass[0] = LoadBitmap(Memory->ReadFileToMemory, "test2/grass00.bmp");
-        GameState->Grass[1] = LoadBitmap(Memory->ReadFileToMemory, "test2/grass01.bmp");
+    loaded_bitmap HeroFacingRight = LoadBitmap(Memory->ReadFileToMemory, "car_right.bmp");
+    GameState->HeroFacingRight.Body = HeroFacingRight;
+    GameState->HeroFacingRight.Body.Align = {20, 33};
+    loaded_bitmap HeroFacingLeft = LoadBitmap(Memory->ReadFileToMemory, "car_left.bmp");
+    GameState->HeroFacingLeft.Body = HeroFacingLeft;
+    GameState->HeroFacingLeft.Body.Align = {20, 33};
         
-        GameState->Ground[0] = LoadBitmap(Memory->ReadFileToMemory, "test2/ground00.bmp");
-        GameState->Ground[1] = LoadBitmap(Memory->ReadFileToMemory, "test2/ground01.bmp");
-        GameState->Ground[2] = LoadBitmap(Memory->ReadFileToMemory, "test2/ground02.bmp");
-        GameState->Ground[3] = LoadBitmap(Memory->ReadFileToMemory, "test2/ground03.bmp");
+    GameState->Grass[0] = LoadBitmap(Memory->ReadFileToMemory, "test2/grass00.bmp");
+    GameState->Grass[1] = LoadBitmap(Memory->ReadFileToMemory, "test2/grass01.bmp");
         
-        GameState->Tree[0] = LoadBitmap(Memory->ReadFileToMemory, "test2/tree00.bmp");
-        GameState->Tree[0].Align = {45,85};
-        GameState->Tree[1] = LoadBitmap(Memory->ReadFileToMemory, "test2/tree01.bmp");
-        GameState->Tree[1].Align = {45,85};
-        GameState->Tree[2] = LoadBitmap(Memory->ReadFileToMemory, "test2/tree02.bmp");
-        GameState->Tree[2].Align = {45,85};
+    GameState->Ground[0] = LoadBitmap(Memory->ReadFileToMemory, "test2/ground00.bmp");
+    GameState->Ground[1] = LoadBitmap(Memory->ReadFileToMemory, "test2/ground01.bmp");
+    GameState->Ground[2] = LoadBitmap(Memory->ReadFileToMemory, "test2/ground02.bmp");
+    GameState->Ground[3] = LoadBitmap(Memory->ReadFileToMemory, "test2/ground03.bmp");
         
-        GameState->Tuft[0] = LoadBitmap(Memory->ReadFileToMemory, "test2/tuft00.bmp");
-        GameState->Tuft[1] = LoadBitmap(Memory->ReadFileToMemory, "test2/tuft01.bmp");
-        GameState->Tuft[2] = LoadBitmap(Memory->ReadFileToMemory, "test2/tuft02.bmp");
+    GameState->Tree[0] = LoadBitmap(Memory->ReadFileToMemory, "test2/tree00.bmp");
+    GameState->Tree[0].Align = {45,85};
+    GameState->Tree[1] = LoadBitmap(Memory->ReadFileToMemory, "test2/tree01.bmp");
+    GameState->Tree[1].Align = {45,85};
+    GameState->Tree[2] = LoadBitmap(Memory->ReadFileToMemory, "test2/tree02.bmp");
+    GameState->Tree[2].Align = {45,85};
         
-        GameState->Rock[0] = LoadBitmap(Memory->ReadFileToMemory, "test2/rock00.bmp");
-        GameState->Rock[1] = LoadBitmap(Memory->ReadFileToMemory, "test2/rock01.bmp");
-        GameState->Rock[2] = LoadBitmap(Memory->ReadFileToMemory, "test2/rock02.bmp");
-        GameState->Rock[3] = LoadBitmap(Memory->ReadFileToMemory, "test2/rock03.bmp");
+    GameState->Tuft[0] = LoadBitmap(Memory->ReadFileToMemory, "test2/tuft00.bmp");
+    GameState->Tuft[1] = LoadBitmap(Memory->ReadFileToMemory, "test2/tuft01.bmp");
+    GameState->Tuft[2] = LoadBitmap(Memory->ReadFileToMemory, "test2/tuft02.bmp");
+        
+    GameState->Rock[0] = LoadBitmap(Memory->ReadFileToMemory, "test2/rock00.bmp");
+    GameState->Rock[1] = LoadBitmap(Memory->ReadFileToMemory, "test2/rock01.bmp");
+    GameState->Rock[2] = LoadBitmap(Memory->ReadFileToMemory, "test2/rock02.bmp");
+    GameState->Rock[3] = LoadBitmap(Memory->ReadFileToMemory, "test2/rock03.bmp");
 
-        InitializeArena(&GameState->Arena,
-                        Memory->PersistentStorageSize - sizeof(*GameState),
-                        (u8 *)Memory->PersistentStorage + sizeof(*GameState));
+    InitializeArena(&GameState->Arena,
+                    Memory->PersistentStorageSize - sizeof(*GameState),
+                    (u8 *)Memory->PersistentStorage + sizeof(*GameState));
         
-        GameState->TileMap = {};
-        tile_map *TileMap = &GameState->TileMap;
+    GameState->TileMap = {};
+    tile_map *TileMap = &GameState->TileMap;
         
-        GameState->PixelsPerMeter = 40.0f;
-        GameState->MetersPerPixel = 1.0f/GameState->PixelsPerMeter;
+    GameState->PixelsPerMeter = 40.0f;
+    GameState->MetersPerPixel = 1.0f/GameState->PixelsPerMeter;
         
-        TileMap->TileSizeInPixels = 256;
-        TileMap->TileSizeInMeters = TileMap->TileSizeInPixels * GameState->MetersPerPixel;
+    TileMap->TileSizeInPixels = 256;
+    TileMap->TileSizeInMeters = TileMap->TileSizeInPixels * GameState->MetersPerPixel;
 
-        GameState->CameraPosition = {};
+    GameState->CameraPosition = {};
 
 #define Columns 10
 #define Rows 10
-        uint32 TileMap1[Rows][Columns] =
-            {
-                {0, 0, 2, 2, 2, 2, 2, 2, 2, 2},
-                {0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-                {1, 1, 0, 0, 0, 0, 0, 0, 0, 1},
-                {1, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-                {0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-                {1, 0, 2, 0, 1, 0, 1, 0, 0, 1},
-                {1, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-                {1, 0, 0, 0, 0, 0, 0, 0, 2, 1},
-                {1, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-                {1, 1, 1, 1, 1, 0, 1, 1, 1, 1},
-            
-            };
-#if 1
-        GameState->WallSize = 1.0f;
-        s32 Y = INT32_MAX / 2;
-        for (s32 i = 0; i < Rows; i++, Y++)
+    uint32 TileMap1[Rows][Columns] =
         {
-            u32 X = INT32_MAX / 2;
-            for (s32 j = 0; j < Columns; j++, X++)
+            {0, 0, 2, 2, 2, 2, 2, 2, 2, 2},
+            {0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+            {1, 1, 0, 0, 0, 0, 0, 0, 0, 1},
+            {1, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+            {0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+            {1, 0, 2, 0, 1, 0, 1, 0, 0, 1},
+            {1, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+            {1, 0, 0, 0, 0, 0, 0, 0, 2, 1},
+            {1, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+            {1, 1, 1, 1, 1, 0, 1, 1, 1, 1},
+            
+        };
+#if 1
+    GameState->WallSize = 1.0f;
+    s32 Y = INT32_MAX / 2;
+    for (s32 i = 0; i < Rows; i++, Y++)
+    {
+        u32 X = INT32_MAX / 2;
+        for (s32 j = 0; j < Columns; j++, X++)
+        {
+            if(TileMap1[i][j] == 1)
             {
-                if(TileMap1[i][j] == 1)
-                {
-                    tile_map_position P = {};
-                    v2 Delta = {GameState->WallSize * j, GameState->WallSize * i};
-                    P = MapIntoTileSpace(TileMap, P, Delta);
-                    AddWall(GameState, P);
-                }
-                else if (TileMap1[i][j] == 2)
-                {
-                    tile_map_position P = {};
-                    v2 Delta = 1.5f * V2(GameState->WallSize * j,
-                                         GameState->WallSize * i);
-                    P = MapIntoTileSpace(TileMap, P, Delta);
-                    AddTree(GameState, P);
-                }
-                else
-                {
+                tile_map_position P = {};
+                v2 Delta = {GameState->WallSize * j, GameState->WallSize * i};
+                P = MapIntoTileSpace(TileMap, P, Delta);
+                AddWall(GameState, P);
+            }
+            else if (TileMap1[i][j] == 2)
+            {
+                tile_map_position P = {};
+                v2 Delta = 1.5f * V2(GameState->WallSize * j,
+                                     GameState->WallSize * i);
+                P = MapIntoTileSpace(TileMap, P, Delta);
+                AddTree(GameState, P);
+            }
+            else
+            {
                     
-                }
             }
         }
+    }
 #else
-        tile_map_position P = {0,0};
-        AddWall(GameState, &P);
+    tile_map_position P = {0,0};
+    AddWall(GameState, &P);
 #endif
-        tile_map_position HeroStartingP = {-2,-2};
-        GameState->Player = {};
-        entity *Entity = AddHero(GameState);
-        GameState->Player.EntityIndex = Entity->Sim.StorageIndex;
+    tile_map_position HeroStartingP = {-2,-2};
+    GameState->Player = {};
+    entity *Entity = AddHero(GameState);
+    GameState->Player.EntityIndex = Entity->Sim.StorageIndex;
 
 
-        GameState->IsInitialized = true;
+    GameState->IsInitialized = true;
 }
 
 
@@ -572,6 +583,9 @@ internal void
 InitializeTranState(transient_state *TranState, game_state *GameState,
                     loaded_bitmap *Video, game_memory *Memory)
 {
+    TranState->HighPriorityQueue = Memory->WorkQueue;
+    
+    
     InitializeArena(&TranState->Arena,
                     Memory->TransientStorageSize - sizeof(transient_state),
                     (u8 *)Memory->TransientStorage + sizeof(transient_state));
@@ -856,7 +870,7 @@ GameEngine(game_memory *Memory, game_input *Input,
     
 #endif
     DrawGroundBuffers(Video, GameState, TranState, GameState->CameraPosition);
-    TiledRenderOutput(RenderGroup, Video, GameState->PixelsPerMeter);
+    TiledRenderOutput(RenderGroup, TranState->HighPriorityQueue, Video, GameState->PixelsPerMeter);
 
     //DrawTilesOutline(Video, GameState, GameState->CameraPosition);
 

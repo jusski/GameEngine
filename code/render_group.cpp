@@ -1198,14 +1198,31 @@ RenderOutput(render_group *Group, loaded_bitmap *Target,
     }
 }
 
+internal void
+RenderCallback(void *Data)
+{
+    render_work_data *Work = (render_work_data *)Data;
+    render_group *Group = Work->Group;
+    loaded_bitmap *Target = Work->Target;
+    rectangle2i ClipRect = Work->ClipRect;
+    r32 PixelsPerMeter = Work->PixelsPerMeter;
+
+    
+    RenderOutput(Group, Target, PixelsPerMeter, ClipRect, true);
+    RenderOutput(Group, Target, PixelsPerMeter, ClipRect, false);                
+}
 
 internal void
-TiledRenderOutput(render_group *Group, loaded_bitmap *Target, r32 PixelsPerMeter)
+TiledRenderOutput(render_group *Group, work_queue *WorkQueue,
+                  loaded_bitmap *Target, r32 PixelsPerMeter)
 {
-    u32 TileCountX = 4;
-    u32 TileCountY = 4;
+    const u32 TileCountX = 4;
+    const u32 TileCountY = 4;
     u32 TileWidth = Target->Width / TileCountX;
     u32 TileHeight = Target->Height / TileCountY;
+
+    render_work_data WorkData[TileCountX * TileCountY];
+    u32 Index = 0;
 
     rectangle2i ClipRect;
     for (u32 TileY = 0; TileY < TileCountY; ++TileY )
@@ -1218,11 +1235,20 @@ TiledRenderOutput(render_group *Group, loaded_bitmap *Target, r32 PixelsPerMeter
             ClipRect.MinY = TileY * TileHeight + 4;
             ClipRect.MaxX = ClipRect.MinX + TileWidth - 4;
             ClipRect.MaxY = ClipRect.MinY + TileHeight - 4;
-            
-            RenderOutput(Group, Target, PixelsPerMeter, ClipRect, true);
-            RenderOutput(Group, Target, PixelsPerMeter, ClipRect, false);            
+
+            render_work_data *Entry = WorkData + Index++;
+            Entry->Group = Group;
+            Entry->Target = Target;
+            Entry->ClipRect = ClipRect;
+            Entry->PixelsPerMeter = PixelsPerMeter;
+
+            //RenderCallback(&Data);
+            WorkQueuePush(WorkQueue, RenderCallback, Entry);
+
         }
     
     }
+    
+    SpinWait(WorkQueue);
     
 }
