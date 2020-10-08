@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "win32_main.h"
+#include "stb_easy_font.h"
 
 global_variable volatile bool Running = true;
 
@@ -9,6 +10,20 @@ global_variable long ClientWidth;
 global_variable long ClientHeight;
 //global_variable char OutputDebugMessage[200];
 global_variable GLuint TextureHandle;
+
+void print_string(float x, float y, char *text, float r, float g, float b)
+{
+  static char buffer[99999]; // ~500 chars
+  int num_quads;
+
+  num_quads = stb_easy_font_print(x, y, text, NULL, buffer, sizeof(buffer));
+
+  glColor3f(r,g,b);
+  glEnableClientState(GL_VERTEX_ARRAY);
+  glVertexPointer(2, GL_FLOAT, 16, buffer);
+  glDrawArrays(GL_QUADS, 0, num_quads*4);
+  glDisableClientState(GL_VERTEX_ARRAY);
+}
 
 internal inline void
 Win32TogleFullScreen(HWND Window)
@@ -342,6 +357,53 @@ Win32ResizeBitmap(win32_offscreen_bitmap *Bitmap, s32 Width, s32 Height)
     
 }
 
+
+#if 1
+#define _CRT_SECURE_NO_WARNINGS
+#pragma warning(disable:4996)
+#define STB_TRUETYPE_IMPLEMENTATION  // force following include to generate implementation
+#include "stb_truetype.h"
+
+unsigned char ttf_buffer[1<<20];
+unsigned char temp_bitmap[512*512];
+
+stbtt_bakedchar cdata[96]; // ASCII 32..126 is 95 glyphs
+GLuint ftex;
+
+void my_stbtt_initfont(void)
+{
+   fread(ttf_buffer, 1, 1<<20, fopen("c:/windows/fonts/times.ttf", "rb"));
+   stbtt_BakeFontBitmap(ttf_buffer,0, 32.0, temp_bitmap,512,512, 32,96, cdata); // no guarantee this fits!
+   // can free ttf_buffer at this point
+   glGenTextures(1, &ftex);
+   glBindTexture(GL_TEXTURE_2D, ftex);
+   glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, 512,512, 0, GL_ALPHA, GL_UNSIGNED_BYTE, temp_bitmap);
+   // can free temp_bitmap at this point
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+}
+
+void my_stbtt_print(float x, float y, char *text)
+{
+   // assume orthographic projection with units = screen pixels, origin at top left
+   glEnable(GL_TEXTURE_2D);
+   glBindTexture(GL_TEXTURE_2D, ftex);
+   glBegin(GL_QUADS);
+   while (*text) {
+      if (*text >= 32 && *text < 128) {
+         stbtt_aligned_quad q;
+         stbtt_GetBakedQuad(cdata, 512,512, *text-32, &x,&y,&q,1);//1=opengl & d3d10+,0=d3d9
+         glTexCoord2f(q.s0,q.t1); glVertex2f(q.x0,q.y0);
+         glTexCoord2f(q.s1,q.t1); glVertex2f(q.x1,q.y0);
+         glTexCoord2f(q.s1,q.t0); glVertex2f(q.x1,q.y1);
+         glTexCoord2f(q.s0,q.t0); glVertex2f(q.x0,q.y1);
+      }
+      ++text;
+   }
+   glEnd();
+}
+#endif
+
+
 internal void
 Win32UpdateWindow(HDC DeviceContext, win32_offscreen_bitmap *Bitmap, long x, long y, long Width, long Height)
 {
@@ -394,9 +456,20 @@ Win32UpdateWindow(HDC DeviceContext, win32_offscreen_bitmap *Bitmap, long x, lon
     glVertex2f(1,1);
     glTexCoord2f(0.0f, 1.0f);
     glVertex2f(-1,1);
-
+    
+    
     glEnd();
 
+    //glFrustum(-.1, 0.1, -0.1, 100.0, 100.0, 200.0);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glOrtho(-1.0, 100.0, 100.0, -100.0, -1, 1);
+    
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    print_string(0.f, 0.f, "Hello World 0123\nliaw\nliaw\n1234\n", 0.5f, 0.5f, 1.f);
+    //my_stbtt_print(0.1f, 0.1f, "k u p");
+    
     SwapBuffers(DeviceContext);
 #endif
 }
@@ -775,6 +848,25 @@ RemoveFromQueue(work_queue *WorkQueue, callback_function *CallBack, void **Data)
     return(true);
 }
 
+bool32
+RemoveAndExecuteTask(work_queue *WorkQueue, u32 ThreadIndex)
+{
+    void *Data = 0;
+    callback_function CallBack = 0;
+    if (RemoveFromQueue(WorkQueue, &CallBack, &Data))
+    {
+        //Trace("Thread %d works\n", ThreadIndex);    
+
+        CallBack(Data);
+        ++WorkQueue->FinishedJobs;
+
+        //Trace("Thread %d finished on %d\n", ThreadIndex,
+        //WorkQueue->FinishedJobs.load(std::memory_order_relaxed));
+        return(true);
+    }
+    return(false);
+}
+
 DWORD CALLBACK
 ThreadProc(LPVOID Parameter)
 {
@@ -786,22 +878,9 @@ ThreadProc(LPVOID Parameter)
 
     for(;;)
     {
-        void *Data = 0;
-        callback_function CallBack = 0;
-        if (RemoveFromQueue(WorkQueue, &CallBack, &Data))
+        if (!RemoveAndExecuteTask(WorkQueue, ThreadIndex))
         {
-            Assert(Data);
-            Assert(CallBack);
-            
-            Trace("Thread %d works\n", ThreadIndex);    
-            CallBack(Data);
-            ++WorkQueue->FinishedJobs;
-            Trace("Thread %d finished on %d\n", ThreadIndex,
-                  WorkQueue->FinishedJobs.load(std::memory_order_relaxed));    
-        }
-        else
-        {
-            Trace("Thread %d sleeps\n", ThreadIndex);    
+            //Trace("Thread %d sleeps\n", ThreadIndex);    
             WaitForSingleObject(WorkQueue->Semaphore, INFINITE);
         }
         
@@ -845,7 +924,7 @@ WinMain(HINSTANCE Instance, HINSTANCE _Ignore, LPSTR CommandLine, int ShowComman
 {
     DWORD ThreadId;
     
-    thread_creation_data Threads[4];
+    thread_creation_data Threads[2];
     work_queue WorkQueue = {};
     for (u32 Index = 0; Index < ArrayCount(WorkQueue.WorkItems); ++Index)
     {
@@ -864,27 +943,7 @@ WinMain(HINSTANCE Instance, HINSTANCE _Ignore, LPSTR CommandLine, int ShowComman
         HANDLE Thread = CreateThread(0, 0, ThreadProc, Parameter, 0, &ThreadId);
         CloseHandle(Thread);    
     }
-#if 0
-    for (u32 Index = 0; Index < 20; ++Index)
-    {
-        work_data Data = {Index};
-        
-        if(!AddToQueue(&WorkQueue, &Data))
-        {
-            Trace("AddToQueue failed on %d\n", Index);
-        }
-    }
 
-    work_data Data;
-    while(RemoveFromQueue(&WorkQueue, &Data))
-    {
-        Trace("Main Thread works on %d\n", Data.Value);
-        Sleep(10);
-        ++WorkQueue.FinishedJobs;
-    };
-    
-    while(WorkQueue.FinishedJobs < WorkQueue.ProducerIndex) {};
-#endif
     
     WNDCLASS WindowClass = {};
     WindowClass.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW;
@@ -944,7 +1003,7 @@ WinMain(HINSTANCE Instance, HINSTANCE _Ignore, LPSTR CommandLine, int ShowComman
         game_memory Memory = {};
 
         Memory.AddToQueue = AddToQueue;
-        Memory.RemoveFromQueue = RemoveFromQueue;
+        Memory.RemoveAndExecuteTask = RemoveAndExecuteTask;
         Memory.WorkQueue = &WorkQueue;
         Memory.WaitForAllToFinish = WaitForAllToFinish;
         

@@ -2,7 +2,23 @@
 #include "pch.h"
 #include "platform.h"
 #include "game.h"
-#define Trace(Format, ...) {char OutputDebugMessage[100]; _snprintf_s(OutputDebugMessage, sizeof(OutputDebugMessage), Format, ## __VA_ARGS__); OutputDebugStringA(OutputDebugMessage);}
+#if 0
+    #define Trace(Format, ...)                                  \
+    {                                                           \
+        char OutputDebugMessage[100];                           \
+        snprintf(OutputDebugMessage, sizeof(OutputDebugMessage),\
+                 Format, ## __VA_ARGS__);                       \
+        OutputDebugStringA(OutputDebugMessage);                 \
+    }
+#else
+    #define Trace(Format, ...)                                  \
+    {                                                           \
+        char OutputDebugMessage[100];                           \
+        snprintf(OutputDebugMessage, sizeof(OutputDebugMessage),\
+                 Format, ## __VA_ARGS__);                       \
+        print_string(0, 0, OutputDebugMessage, 1.f, 1.f, 1.f);   \
+    }
+#endif
 
 typedef  decltype(GameEngine) game_engine;
 

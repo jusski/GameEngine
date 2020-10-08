@@ -1,8 +1,9 @@
 
 #include "game.h"
 
-global_variable add_to_queue *WorkQueuePush;
-global_variable wait_for_all_to_finish *SpinWait;
+global_variable add_to_queue *AddToQueue;
+global_variable wait_for_all_to_finish *WaitForAllToFinish;
+global_variable remove_and_execute_task *RemoveAndExecuteTask;
 
 global_variable game_memory *GlobalMemory;
 
@@ -470,9 +471,9 @@ MakeRect(loaded_bitmap *Bitmap)
 internal void
 InitializeGameState(game_state *GameState, loaded_bitmap *Video, game_memory *Memory)
 {
-    WorkQueuePush = Memory->AddToQueue;
-    SpinWait = Memory->WaitForAllToFinish;
-    //RemoveFromQueue = Memory->RemoveFromQueue;
+    AddToQueue = Memory->AddToQueue;
+    WaitForAllToFinish = Memory->WaitForAllToFinish;
+    RemoveAndExecuteTask = Memory->RemoveAndExecuteTask;
         
     loaded_bitmap HeroFacingRight = LoadBitmap(Memory->ReadFileToMemory, "car_right.bmp");
     GameState->HeroFacingRight.Body = HeroFacingRight;

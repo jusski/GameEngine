@@ -753,7 +753,7 @@ DrawTextureQuick(loaded_bitmap *Destination, v2 Origin,
 #if IACA
     IACA_START;
 #endif
-    BEGIN_TIMED_BLOCK(PixelHit);
+//    BEGIN_TIMED_BLOCK(PixelHit);
     
     for (s32 y = MinY; y < MaxY; y += 2)
     {
@@ -958,7 +958,7 @@ DrawTextureQuick(loaded_bitmap *Destination, v2 Origin,
     }
     u32 LoopCount = ((MaxX-MinX+1)*(MaxY-MinY+1)) / 2;
     
-    END_TIMED_BLOCK_COUNTED(PixelHit, LoopCount);
+    //END_TIMED_BLOCK_COUNTED(PixelHit, LoopCount);
 #if IACA
     IACA_END;
 #endif
@@ -1207,7 +1207,6 @@ RenderCallback(void *Data)
     rectangle2i ClipRect = Work->ClipRect;
     r32 PixelsPerMeter = Work->PixelsPerMeter;
 
-    
     RenderOutput(Group, Target, PixelsPerMeter, ClipRect, true);
     RenderOutput(Group, Target, PixelsPerMeter, ClipRect, false);                
 }
@@ -1216,6 +1215,7 @@ internal void
 TiledRenderOutput(render_group *Group, work_queue *WorkQueue,
                   loaded_bitmap *Target, r32 PixelsPerMeter)
 {
+    BEGIN_TIMED_BLOCK(PixelHit);
     const u32 TileCountX = 4;
     const u32 TileCountY = 4;
     u32 TileWidth = Target->Width / TileCountX;
@@ -1242,13 +1242,20 @@ TiledRenderOutput(render_group *Group, work_queue *WorkQueue,
             Entry->ClipRect = ClipRect;
             Entry->PixelsPerMeter = PixelsPerMeter;
 
-            //RenderCallback(&Data);
-            WorkQueuePush(WorkQueue, RenderCallback, Entry);
+            //RenderCallback(Entry);
+            AddToQueue(WorkQueue, RenderCallback, Entry);
 
         }
     
     }
-    
-    SpinWait(WorkQueue);
-    
+#if 1
+    while(RemoveAndExecuteTask(WorkQueue, 99))
+    {
+        
+    }
+    WaitForAllToFinish(WorkQueue);
+#endif
+    u32 Width = Target->Width;
+    u32 Height = Target->Height;
+    END_TIMED_BLOCK_COUNTED(PixelHit, Width * Height);
 }

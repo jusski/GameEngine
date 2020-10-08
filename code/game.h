@@ -104,14 +104,14 @@ typedef void (*callback_function)(void *);
 
 struct work_queue;
 loaded_file ReadFileToMemory(const char* );
-bool32 AddToQueue(work_queue *, callback_function, void *);
-bool32 RemoveFromQueue(work_queue *, callback_function *, void **);
-void WaitForAllToFinish(work_queue *);
+bool32 AddToQueue_(work_queue *, callback_function, void *);
+bool32 RemoveAndExecuteTask_(work_queue *, u32 );
+void WaitForAllToFinish_(work_queue *);
     
 typedef decltype(ReadFileToMemory) read_file_to_memory;
-typedef decltype(AddToQueue) add_to_queue;
-typedef decltype(RemoveFromQueue) remove_from_queue;
-typedef decltype(WaitForAllToFinish) wait_for_all_to_finish;
+typedef decltype(AddToQueue_) add_to_queue;
+typedef decltype(RemoveAndExecuteTask_) remove_and_execute_task;
+typedef decltype(WaitForAllToFinish_) wait_for_all_to_finish;
 
 
 struct game_memory
@@ -123,7 +123,7 @@ struct game_memory
 
     read_file_to_memory *ReadFileToMemory;
     add_to_queue *AddToQueue;
-    remove_from_queue *RemoveFromQueue;
+    remove_and_execute_task *RemoveAndExecuteTask;
     wait_for_all_to_finish *WaitForAllToFinish;
     
     work_queue *WorkQueue;

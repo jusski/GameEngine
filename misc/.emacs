@@ -717,8 +717,8 @@ the documentation of `query-replace'"
 (define-key ivy-minibuffer-map (kbd "C-o") 'ivy-previous-line)
 (define-key ivy-minibuffer-map (kbd "C-l") 'ivy-next-line)
 
-(define-key dired-mode-map (kbd "C-l") 'dired-next-line)
-(define-key dired-mode-map (kbd "C-o") 'dired-previous-line)
+;(define-key dired-mode-map (kbd "C-l") 'dired-next-line)
+;xc(define-key dired-mode-map (kbd "C-o") 'dired-previous-line)
 
 
 (ctags-global-auto-update-mode)
@@ -727,7 +727,7 @@ the documentation of `query-replace'"
 
 (global-set-key [f1] 'eshell)
 (global-set-key [f2] 'quick-calc)
-
+(global-set-key [(control v)] 'recenter)
 (setq rcirc-default-nick "jusski")
 (setq rcirc-authinfo
                 '(("freenode" nickserv "jusski" "asdf6ghj")))
